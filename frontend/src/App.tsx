@@ -33,20 +33,22 @@ function App() {
 
   return (
     <Router>
-      <Flex>
-        {isAuthenticated && <Navigation />}
-        <Box flex={1}>
-          <Header onLogout={handleLogout} />
-          <Switch>
-            <Route exact path="/" component={Login} />
-            <PrivateRoute path="/dashboard" component={Dashboard} />
-            <PrivateRoute path="/closet" component={Closet} />
-            <PrivateRoute path="/recommendations" component={OutfitRecommendation} />
-            <PrivateRoute path="/try-on" component={VirtualTryOn} />
-            <PrivateRoute path="/shopper" component={PersonalShopper} />
-          </Switch>
-          <Footer />
-        </Box>
+      <Flex direction="column" minHeight="100vh">
+        <Header onLogout={handleLogout} />
+        <Flex flex={1}>
+          {isAuthenticated && <Navigation />}
+          <Box flex={1}>
+            <Switch>
+              <Route exact path="/" component={Login} />
+              <PrivateRoute path="/dashboard" component={Dashboard} />
+              <PrivateRoute path="/closet" component={Closet} />
+              <PrivateRoute path="/recommendations" component={OutfitRecommendation} />
+              <PrivateRoute path="/try-on" component={VirtualTryOn} />
+              <PrivateRoute path="/shopper" component={PersonalShopper} />
+            </Switch>
+          </Box>
+        </Flex>
+        <Footer />
       </Flex>
     </Router>
   );
