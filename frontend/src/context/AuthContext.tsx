@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback, ReactNode } from 'react';
 import api from '../api/axios';
 
 interface User {
@@ -41,24 +41,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUser(null);
   };
 
-  const checkAuth = async () => {
+  const checkAuth = useCallback(async () => {
     const token = localStorage.getItem('token');
     if (token) {
       try {
-        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
         const response = await api.get('/api/auth/verify');
+        setUser(response.data);
         setIsAuthenticated(true);
-        setUser(response.data.user);
       } catch (error) {
         console.error('Authentication check failed:', error);
-        logout();
+        setUser(null);
+        setIsAuthenticated(false);
+        localStorage.removeItem('token');
       }
+    } else {
+      setUser(null);
+      setIsAuthenticated(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     checkAuth();
-  }, []);
+  }, [checkAuth]);
 
   return (
     <AuthContext.Provider value={{ isAuthenticated, user, login, logout, checkAuth }}>

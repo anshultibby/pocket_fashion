@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { ChakraProvider } from '@chakra-ui/react';
-import { BrowserRouter as Router, Route, Switch, Redirect } from 'react-router-dom';
-import { GoogleOAuthProvider } from '@react-oauth/google';
-import { AuthProvider, useAuth } from './context/AuthContext'; // Update this import
+import React from 'react';
+import { Box, Flex } from '@chakra-ui/react';
+import { BrowserRouter as Router, Route, Switch } from 'react-router-dom';
+import { useAuth } from './context/AuthContext';
+import api from './api/axios';
 
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -13,63 +13,42 @@ import PersonalShopper from './pages/PersonalShopper';
 
 import Header from './components/common/Header';
 import Footer from './components/common/Footer';
-
-const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || '';
-
-const PrivateRoute: React.FC<{
-  component: React.ComponentType<any>;
-  path: string; 
-  exact?: boolean;
-}> = ({ component: Component, ...rest }) => {
-  const { isAuthenticated, checkAuth } = useAuth();
-  const [isChecking, setIsChecking] = useState(true);
-
-  useEffect(() => {
-    const check = async () => {
-      await checkAuth();
-      setIsChecking(false);
-    };
-    check();
-  }, [checkAuth]);
-
-  if (isChecking) {
-    return <div>Loading...</div>; // Or a proper loading component
-  }
-
-  return (
-    <Route
-      {...rest}
-      render={(props) =>
-        isAuthenticated ? (
-          <Component {...props} />
-        ) : (
-          <Redirect to="/" />
-        )
-      }
-    />
-  );
-};
+import Navigation from './components/common/Navigation';
+import PrivateRoute from './components/common/PrivateRoute';
 
 function App() {
+  const { isAuthenticated, logout } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      await api.post('/api/auth/logout');
+      logout();
+      window.location.href = '/';
+    } catch (error) {
+      console.error('Error during logout:', error);
+      logout();
+      window.location.href = '/';
+    }
+  };
+
   return (
-    <ChakraProvider>
-      <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-        <AuthProvider>
-          <Router>
-            <Header />
-            <Switch>
-              <Route exact path="/" component={Login} />
-              <PrivateRoute path="/dashboard" component={Dashboard} />
-              <PrivateRoute path="/closet" component={Closet} />
-              <PrivateRoute path="/recommendations" component={OutfitRecommendation} />
-              <PrivateRoute path="/try-on" component={VirtualTryOn} />
-              <PrivateRoute path="/shopper" component={PersonalShopper} />
-            </Switch>
-            <Footer />
-          </Router>
-        </AuthProvider>
-      </GoogleOAuthProvider>
-    </ChakraProvider>
+    <Router>
+      <Flex>
+        {isAuthenticated && <Navigation />}
+        <Box flex={1}>
+          <Header onLogout={handleLogout} />
+          <Switch>
+            <Route exact path="/" component={Login} />
+            <PrivateRoute path="/dashboard" component={Dashboard} />
+            <PrivateRoute path="/closet" component={Closet} />
+            <PrivateRoute path="/recommendations" component={OutfitRecommendation} />
+            <PrivateRoute path="/try-on" component={VirtualTryOn} />
+            <PrivateRoute path="/shopper" component={PersonalShopper} />
+          </Switch>
+          <Footer />
+        </Box>
+      </Flex>
+    </Router>
   );
 }
 

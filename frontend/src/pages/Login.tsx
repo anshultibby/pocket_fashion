@@ -1,9 +1,8 @@
 import React from 'react';
 import { Box, Heading, VStack, useToast } from '@chakra-ui/react';
 import { GoogleLogin } from '@react-oauth/google';
-import axios, { AxiosError } from 'axios';
 import { useHistory } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext'; // Add this import
+import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 
 const Login: React.FC = () => {
