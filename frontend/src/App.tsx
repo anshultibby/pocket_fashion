@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { ChakraProvider } from '@chakra-ui/react';
 import { BrowserRouter as Router, Route, Switch, Redirect } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
@@ -21,7 +21,21 @@ const PrivateRoute: React.FC<{
   path: string; 
   exact?: boolean;
 }> = ({ component: Component, ...rest }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, checkAuth } = useAuth();
+  const [isChecking, setIsChecking] = useState(true);
+
+  useEffect(() => {
+    const check = async () => {
+      await checkAuth();
+      setIsChecking(false);
+    };
+    check();
+  }, [checkAuth]);
+
+  if (isChecking) {
+    return <div>Loading...</div>; // Or a proper loading component
+  }
+
   return (
     <Route
       {...rest}

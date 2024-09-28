@@ -1,6 +1,8 @@
 import os
+import pandas as pd
 from dotenv import load_dotenv
-from fastapi import HTTPException
+from fastapi import HTTPException, Depends
+from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
 from google.oauth2 import id_token
 from google.auth.transport import requests
@@ -15,6 +17,9 @@ GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
 JWT_SECRET = os.getenv('JWT_SECRET')
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_MINUTES = 30
+USER_CSV_PATH = 'users.csv'
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 if not GOOGLE_CLIENT_ID:
     raise ValueError("GOOGLE_CLIENT_ID is not set in the environment variables")
@@ -40,6 +45,30 @@ def create_jwt_token(data: dict):
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
     return encoded_jwt
+
+def get_user_df():
+    try:
+        return pd.read_csv(USER_CSV_PATH)
+    except FileNotFoundError:
+        return pd.DataFrame(columns=['id', 'email', 'name'])
+
+def save_user_df(df):
+    df.to_csv(USER_CSV_PATH, index=False)
+
+def get_user(user_id: str):
+    df = get_user_df()
+    user = df[df['id'] == user_id]
+    if user.empty:
+        return None
+    return User(**user.iloc[0].to_dict())
+
+def save_user(user: User):
+    df = get_user_df()
+    if user.id in df['id'].values:
+        df.loc[df['id'] == user.id] = user.dict()
+    else:
+        df = df.append(user.dict(), ignore_index=True)
+    save_user_df(df)
 
 async def google_auth(google_token: GoogleToken):
     try:
@@ -68,7 +97,7 @@ async def google_auth(google_token: GoogleToken):
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid token")
 
-def get_current_user(token: str):
+async def get_current_user(token: str = Depends(oauth2_scheme)):
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         user_id: str = payload.get("sub")
@@ -79,4 +108,7 @@ def get_current_user(token: str):
     
     # Here you would typically fetch the user from your database
     # For this example, we'll just return a User object with the ID
-    return User(id=user_id, email="example@email.com", name="Example User")
+    user = get_user(user_id)
+    if user is None:
+        raise HTTPException(status_code=401, detail="User not found")
+    return user
