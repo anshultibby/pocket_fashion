@@ -46,14 +46,14 @@ class Closet:
 
     def add_item(self, image_path: str) -> Dict[str, Any]:
         try:
-            new_image_path = os.path.join(self.image_dir, f"{uuid.uuid4()}.jpg")
+            new_image_filename = f"{uuid.uuid4()}.jpg"
+            new_image_path = os.path.join(self.image_dir, new_image_filename)
             shutil.copy(image_path, new_image_path)
             
             result = segment_and_categorize_image(new_image_path)
             
             new_items = []
             for item in result['items']:
-                # Ensure attributes is a dictionary
                 attributes = item.get('attributes', {})
                 if isinstance(attributes, str):
                     try:
@@ -63,7 +63,7 @@ class Closet:
                 
                 clothes = Clothes(
                     id=str(uuid.uuid4()),
-                    image_path=new_image_path,
+                    image_path=f"/static/{self.user_id}/{new_image_filename}",  # Update image_path
                     clothes_mask=result['clothes_mask'],
                     category=item['category'],
                     subcategory=item['subcategory'],
@@ -72,9 +72,7 @@ class Closet:
                 )
                 new_items.append(clothes.to_dict())
             
-            # Use concat instead of append
             self.df = pd.concat([self.df, pd.DataFrame([new_items[0]])], ignore_index=True)
-            
             self._save_df()
             return new_items[0]
         except Exception as e:

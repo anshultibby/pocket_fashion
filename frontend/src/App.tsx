@@ -2,6 +2,7 @@ import React from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import { BrowserRouter as Router, Route, Switch, Redirect } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
+import './App.css';  // Import the CSS file
 
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';

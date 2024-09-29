@@ -25,6 +25,7 @@ const Closet: React.FC = () => {
     try {
       const response = await api.get('/api/user/closet');
       setClosetItems(response.data.items || []);
+      console.log('Fetched closet items:', response.data.items);
     } catch (error) {
       console.error('Error fetching closet items:', error);
       toast({
@@ -72,10 +73,10 @@ const Closet: React.FC = () => {
         },
       });
 
-      // Ensure the response contains the expected item
       if (response.data && response.data.item) {
         setSelectedFile(null);
         setClosetItems([...closetItems, response.data.item]);
+        console.log('Added item:', response.data.item);
         toast({
           title: 'Item added',
           status: 'success',
@@ -100,6 +101,7 @@ const Closet: React.FC = () => {
     try {
       await api.delete(`/api/user/closet/item/${itemId}`);
       setClosetItems(closetItems.filter(item => item.id !== itemId));
+      console.log('Deleted item:', itemId);
       toast({
         title: 'Item deleted',
         status: 'success',
@@ -130,11 +132,18 @@ const Closet: React.FC = () => {
             {closetItems.map((item) => (
               <Box key={item.id} borderWidth={1} borderRadius="lg" overflow="hidden">
                 <Image
-                  src={item.image_path}
+                  className="image-container"
+                  src={`${process.env.REACT_APP_API_URL}${item.image_path}`}
                   alt={`${item.category} - ${item.subcategory}`}
                   objectFit="cover"
                   width="100%"
                   height="200px"
+                  fallbackSrc="/path/to/fallback/image.jpg"
+                  onError={(e) => {
+                    console.error('Error loading image:', e);
+                    console.log('Failed image path:', `${process.env.REACT_APP_API_URL}${item.image_path}`);
+                  }}
+                  onLoad={() => console.log('Image loaded:', `${process.env.REACT_APP_API_URL}${item.image_path}`)}
                 />
                 <Box p={2}>
                   <Text fontSize="sm">{item.category} - {item.subcategory}</Text>
