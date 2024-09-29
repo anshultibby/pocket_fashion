@@ -1,48 +1,40 @@
 import React from 'react';
-import { Box, Heading, VStack, useToast } from '@chakra-ui/react';
-import { GoogleLogin } from '@react-oauth/google';
 import { useHistory } from 'react-router-dom';
+import { useToast, Box, VStack, Heading, Text } from '@chakra-ui/react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
+import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
 
 const Login: React.FC = () => {
-  const history = useHistory();
-  const { login } = useAuth();
   const toast = useToast();
+  const { login } = useAuth();
+  const history = useHistory();
 
-  const handleSuccess = async (credentialResponse: any) => {
+  const handleLogin = async (response: CredentialResponse) => {
     try {
-      const response = await api.post('/api/auth/google', {
-        token: credentialResponse.credential
-      });
-      
-      const { access_token, user } = response.data;
-      login(access_token, user);
-      
+      const apiResponse = await api.post('/api/auth/google', { token: response.credential });
+      const { user } = apiResponse.data;
+      login(user);
       history.push('/dashboard');
     } catch (error) {
-      console.error('Login error:', error);
-      toast({
-        title: "Login Failed",
-        description: "There was an error logging in. Please try again.",
-        status: "error",
-        duration: 3000,
-        isClosable: true,
-      });
+      console.error('Login failed:', error);
+      // Handle login error (show message to user, etc.)
     }
   };
 
   return (
-    <Box minHeight="100vh" display="flex" alignItems="center" justifyContent="center">
+    <Box p={8}>
       <VStack spacing={8}>
-        <Heading>Login to Pocket Fashion</Heading>
+        <Heading>Welcome to Pocket Fashion</Heading>
+        <Text>Please sign in to continue</Text>
         <GoogleLogin
-          onSuccess={handleSuccess}
+          onSuccess={handleLogin}
           onError={() => {
+            console.log('Login Failed');
             toast({
-              title: "Login Failed",
-              description: "There was an error logging in. Please try again.",
-              status: "error",
+              title: 'Login failed',
+              description: 'An error occurred during login. Please try again.',
+              status: 'error',
               duration: 3000,
               isClosable: true,
             });
@@ -51,6 +43,6 @@ const Login: React.FC = () => {
       </VStack>
     </Box>
   );
-}
+};
 
 export default Login;

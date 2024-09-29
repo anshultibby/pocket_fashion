@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
-import { BrowserRouter as Router, Route, Switch } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Switch, Redirect } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import api from './api/axios';
 
@@ -14,37 +14,48 @@ import PersonalShopper from './pages/PersonalShopper';
 import Header from './components/common/Header';
 import Footer from './components/common/Footer';
 import Navigation from './components/common/Navigation';
-import PrivateRoute from './components/common/PrivateRoute';
 
 function App() {
-  const { isAuthenticated, logout } = useAuth();
+  const { isAuthenticated, login } = useAuth();
+  const [isLoading, setIsLoading] = useState(true);
 
-  const handleLogout = async () => {
-    try {
-      await api.post('/api/auth/logout');
-      logout();
-      window.location.href = '/';
-    } catch (error) {
-      console.error('Error during logout:', error);
-      logout();
-      window.location.href = '/';
-    }
-  };
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      try {
+        const response = await api.get('/api/auth/verify');
+        if (response.data) {
+          login(response.data);
+        }
+      } catch (error) {
+        console.error('Error checking auth status:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkAuthStatus();
+  }, [login]);
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <Router>
       <Flex direction="column" minHeight="100vh">
-        <Header onLogout={handleLogout} />
+        <Header />
         <Flex flex={1}>
           {isAuthenticated && <Navigation />}
           <Box flex={1}>
             <Switch>
-              <Route exact path="/" component={Login} />
-              <PrivateRoute path="/dashboard" component={Dashboard} />
-              <PrivateRoute path="/closet" component={Closet} />
-              <PrivateRoute path="/recommendations" component={OutfitRecommendation} />
-              <PrivateRoute path="/try-on" component={VirtualTryOn} />
-              <PrivateRoute path="/shopper" component={PersonalShopper} />
+              <Route exact path="/" render={() => (
+                isAuthenticated ? <Redirect to="/dashboard" /> : <Login />
+              )} />
+              <Route path="/dashboard" component={Dashboard} />
+              <Route path="/closet" component={Closet} />
+              <Route path="/recommendations" component={OutfitRecommendation} />
+              <Route path="/try-on" component={VirtualTryOn} />
+              <Route path="/shopper" component={PersonalShopper} />
             </Switch>
           </Box>
         </Flex>

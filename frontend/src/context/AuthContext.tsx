@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useState, useContext, ReactNode, useCallback } from 'react';
 import api from '../api/axios';
 
 interface User {
@@ -10,62 +10,30 @@ interface User {
 interface AuthContextType {
   isAuthenticated: boolean;
   user: User | null;
-  login: (token: string, user: User) => void;
-  logout: () => void;
-  checkAuth: () => Promise<void>;
+  login: (user: User) => void;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-interface AuthProviderProps {
-  children: ReactNode;
-}
-
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
 
-  const login = (token: string, user: User) => {
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(user));
-    api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    setIsAuthenticated(true);
-    setUser(user);
-  };
+  const login = useCallback((userData: User) => {
+    setUser(userData);
+  }, []);
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    delete api.defaults.headers.common['Authorization'];
-    setIsAuthenticated(false);
-    setUser(null);
-  };
-
-  const checkAuth = useCallback(async () => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      try {
-        const response = await api.get('/api/auth/verify');
-        setUser(response.data);
-        setIsAuthenticated(true);
-      } catch (error) {
-        console.error('Authentication check failed:', error);
-        setUser(null);
-        setIsAuthenticated(false);
-        localStorage.removeItem('token');
-      }
-    } else {
+  const logout = useCallback(async () => {
+    try {
+      await api.post('/api/auth/logout');
       setUser(null);
-      setIsAuthenticated(false);
+    } catch (error) {
+      console.error('Logout failed:', error);
     }
   }, []);
 
-  useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
-
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, login, logout, checkAuth }}>
+    <AuthContext.Provider value={{ isAuthenticated: !!user, user, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

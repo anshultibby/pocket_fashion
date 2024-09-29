@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Box, Heading, Text, Button, VStack, HStack, Input, useToast, FormControl, FormLabel, SimpleGrid, Image } from '@chakra-ui/react';
 import api from '../api/axios';
+import { useAuth } from '../context/AuthContext';
 
 interface Clothes {
   id: string;
@@ -13,16 +14,13 @@ interface Clothes {
 }
 
 const Closet: React.FC = () => {
+  const { isAuthenticated } = useAuth();
   const [closetItems, setClosetItems] = useState<Clothes[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const toast = useToast();
 
-  useEffect(() => {
-    fetchClosetItems();
-  }, []);
-
-  const fetchClosetItems = async () => {
+  const fetchClosetItems = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await api.get('/api/user/closet');
@@ -39,7 +37,13 @@ const Closet: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchClosetItems();
+    }
+  }, [isAuthenticated, fetchClosetItems]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {

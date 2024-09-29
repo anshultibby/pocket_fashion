@@ -1,25 +1,8 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:8000',
+  baseURL: 'http://localhost:8000',  // adjust this to your API URL
+  withCredentials: true,  // This is important for sending cookies with requests
 });
-
-// Add a request interceptor
-api.interceptors.request.use(
-  (config) => {
-    // Get the token from localStorage
-    const token = localStorage.getItem('token');
-    
-    // If token exists, add it to the headers
-    if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`;
-    }
-    
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
 
 export default api;
