@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, ReactNode, useCallback } from 'react';
+import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import api from '../api/axios';
 
 interface User {
@@ -10,8 +10,8 @@ interface User {
 interface AuthContextType {
   isAuthenticated: boolean;
   user: User | null;
-  login: (user: User) => void;
-  logout: () => Promise<void>;
+  login: (token: string) => Promise<void>;
+  logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -19,16 +19,30 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
 
-  const login = useCallback((userData: User) => {
-    setUser(userData);
-  }, []);
+  const login = async (token: string) => {
+    localStorage.setItem('token', token);
+    await fetchUser();
+  };
 
-  const logout = useCallback(async () => {
+  const logout = () => {
+    localStorage.removeItem('token');
+    setUser(null);
+  };
+
+  const fetchUser = async () => {
     try {
-      await api.post('/api/auth/logout');
-      setUser(null);
+      const response = await api.get('/api/user/me');
+      setUser(response.data);
     } catch (error) {
-      console.error('Logout failed:', error);
+      console.error('Error fetching user:', error);
+      logout();
+    }
+  };
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      fetchUser();
     }
   }, []);
 

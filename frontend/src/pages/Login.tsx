@@ -1,24 +1,54 @@
-import React from 'react';
-import { useHistory } from 'react-router-dom';
-import { useToast, Box, VStack, Heading, Text } from '@chakra-ui/react';
+import React, { useEffect } from 'react';
+import { useHistory, useLocation } from 'react-router-dom';
+import { Box, VStack, Heading, Text, Button, useToast } from '@chakra-ui/react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
-import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
 
 const Login: React.FC = () => {
   const toast = useToast();
   const { login } = useAuth();
   const history = useHistory();
+  const location = useLocation();
 
-  const handleLogin = async (response: CredentialResponse) => {
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const code = urlParams.get('code');
+    if (code) {
+      handleGoogleCallback(code);
+    }
+  }, [location]);
+
+  const handleGoogleLogin = async () => {
     try {
-      const apiResponse = await api.post('/api/auth/google', { token: response.credential });
-      const { user } = apiResponse.data;
-      login(user);
+      const response = await api.get('/api/auth/google');
+      window.location.href = response.data.url;
+    } catch (error) {
+      console.error('Error initiating Google login:', error);
+      toast({
+        title: 'Login failed',
+        description: 'An error occurred during login. Please try again.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
+  const handleGoogleCallback = async (code: string) => {
+    try {
+      const response = await api.get(`/api/auth/google/callback?code=${code}`);
+      const { access_token } = response.data;
+      await login(access_token);
       history.push('/dashboard');
     } catch (error) {
       console.error('Login failed:', error);
-      // Handle login error (show message to user, etc.)
+      toast({
+        title: 'Login failed',
+        description: 'An error occurred during login. Please try again.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
     }
   };
 
@@ -27,19 +57,9 @@ const Login: React.FC = () => {
       <VStack spacing={8}>
         <Heading>Welcome to Pocket Fashion</Heading>
         <Text>Please sign in to continue</Text>
-        <GoogleLogin
-          onSuccess={handleLogin}
-          onError={() => {
-            console.log('Login Failed');
-            toast({
-              title: 'Login failed',
-              description: 'An error occurred during login. Please try again.',
-              status: 'error',
-              duration: 3000,
-              isClosable: true,
-            });
-          }}
-        />
+        <Button onClick={handleGoogleLogin} colorScheme="blue">
+          Sign in with Google
+        </Button>
       </VStack>
     </Box>
   );
