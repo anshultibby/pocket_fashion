@@ -71,14 +71,20 @@ const Closet: React.FC = () => {
           'Content-Type': 'multipart/form-data',
         },
       });
-      setSelectedFile(null);
-      setClosetItems([...closetItems, response.data.item]);
-      toast({
-        title: 'Item added',
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      });
+
+      // Ensure the response contains the expected item
+      if (response.data && response.data.item) {
+        setSelectedFile(null);
+        setClosetItems([...closetItems, response.data.item]);
+        toast({
+          title: 'Item added',
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        });
+      } else {
+        throw new Error('Invalid response from server');
+      }
     } catch (error) {
       console.error('Error adding item:', error);
       toast({
@@ -123,7 +129,13 @@ const Closet: React.FC = () => {
           <SimpleGrid columns={[2, 3, 4]} spacing={4}>
             {closetItems.map((item) => (
               <Box key={item.id} borderWidth={1} borderRadius="lg" overflow="hidden">
-                <Image src={item.image_path} alt={`${item.category} - ${item.subcategory}`} />
+                <Image
+                  src={item.image_path}
+                  alt={`${item.category} - ${item.subcategory}`}
+                  objectFit="cover"
+                  width="100%"
+                  height="200px"
+                />
                 <Box p={2}>
                   <Text fontSize="sm">{item.category} - {item.subcategory}</Text>
                   <Text fontSize="xs" color="gray.500">{item.color}</Text>

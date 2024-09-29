@@ -68,7 +68,7 @@ class Closet:
                     category=item['category'],
                     subcategory=item['subcategory'],
                     color=item['color'],
-                    attributes=attributes  # Use the processed attributes
+                    attributes=attributes
                 )
                 new_items.append(clothes.to_dict())
             

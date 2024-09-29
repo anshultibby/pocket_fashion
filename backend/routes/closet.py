@@ -5,6 +5,7 @@ import shutil
 import os
 import uuid
 import logging
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +43,7 @@ async def add_closet_item(
         
         # Add the item to the closet
         try:
-            closet.add_item(temp_file)
+            item = closet.add_item(temp_file)
         except Exception as e:
             logger.error(f"Error adding item to closet: {str(e)}")
             raise HTTPException(status_code=400, detail="Error adding item to closet")
@@ -53,9 +54,19 @@ async def add_closet_item(
         except Exception as e:
             logger.warning(f"Error removing temporary file: {str(e)}")
         
-        return {"message": "Item added to closet successfully"}
+        return {"message": "Item added to closet successfully", "item": item}
     except Exception as e:
         logger.error(f"Unexpected error in add_closet_item: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
-# ... other routes ...
+@router.delete("/api/user/closet/item/{item_id}")
+async def delete_closet_item(item_id: str, current_user: User = Depends(get_current_user)):
+    try:
+        closet = Closet(current_user.id)
+        if closet.delete_item(item_id):
+            return {"message": "Item deleted successfully"}
+        else:
+            raise HTTPException(status_code=404, detail="Item not found")
+    except Exception as e:
+        logger.error(f"Error deleting item: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
