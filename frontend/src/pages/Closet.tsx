@@ -98,7 +98,7 @@ const Closet: React.FC = () => {
     });
   };
 
-  const addItems = async () => {
+  const submitItems = async () => {
     if (previewFiles.length === 0) {
       toast({
         title: 'No files selected',
@@ -142,7 +142,7 @@ const Closet: React.FC = () => {
 
     setPreviewFiles([]);
     toast({
-      title: 'Items added successfully',
+      title: 'Items submitted successfully',
       status: 'success',
       duration: 3000,
       isClosable: true,
@@ -180,60 +180,54 @@ const Closet: React.FC = () => {
       <VStack spacing={8} align="stretch">
         <FormControl>
           <FormLabel>Add new items to your closet</FormLabel>
-          <VStack spacing={4} align="stretch">
+          <HStack spacing={4} align="stretch">
             <Box
               {...getRootProps()}
               borderWidth={2}
               borderStyle="dashed"
               borderRadius="md"
-              p={4}
+              p={2}
               textAlign="center"
               bg={isDragActive ? "gray.100" : "white"}
+              flex="1"
             >
-              <input {...getInputProps()} />
-              {isDragActive ? (
-                <Text>Drop the files here ...</Text>
-              ) : (
-                <Text>Drag 'n' drop some files here, or click to select files</Text>
-              )}
-            </Box>
-            <HStack>
-              <Input
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-                multiple
-              />
-              <Button onClick={addItems} colorScheme="green" isDisabled={previewFiles.length === 0}>
-                Add Items
+              <input {...getInputProps()} style={{ display: 'none' }} />
+              <Text mb={2} fontSize="sm">Drag & drop files here, or</Text>
+              <Button colorScheme="blue" size="sm" onClick={() => (document.querySelector('input[type="file"]') as HTMLInputElement)?.click()}>
+                Browse
               </Button>
-            </HStack>
-            {previewFiles.length > 0 && (
-              <VStack spacing={4} align="stretch">
-                {previewFiles.map((previewFile, index) => (
-                  <Box key={index} borderWidth={1} borderRadius="lg" overflow="hidden" p={4}>
-                    <Image src={previewFile.preview} alt="Preview" width="100%" height="200px" objectFit="cover" />
-                    <FormControl mt={2}>
-                      <FormLabel>Category</FormLabel>
-                      <Select placeholder="Select category" value={previewFile.category} onChange={(e) => handleTagChange(index, 'category', e.target.value)}>
+            </Box>
+            <Button onClick={submitItems} colorScheme="yellow" isDisabled={previewFiles.length === 0}>
+              Submit
+            </Button>
+          </HStack>
+          {previewFiles.length > 0 && (
+            <VStack spacing={4} align="stretch" mt={4}>
+              {previewFiles.map((previewFile, index) => (
+                <HStack key={index} borderWidth={1} borderRadius="lg" overflow="hidden" p={2} alignItems="center">
+                  <Image src={previewFile.preview} alt="Preview" width="100px" height="100px" objectFit="cover" />
+                  <VStack spacing={2} align="stretch" flex="1">
+                    <FormControl>
+                      <FormLabel fontSize="sm">Category</FormLabel>
+                      <Select size="sm" placeholder="Select category" value={previewFile.category} onChange={(e) => handleTagChange(index, 'category', e.target.value)}>
                         <option value="top">Top</option>
                         <option value="bottom">Bottom</option>
                         <option value="accessory">Accessory</option>
                       </Select>
                     </FormControl>
-                    <FormControl mt={2}>
-                      <FormLabel>Subcategory</FormLabel>
-                      <Input placeholder="Enter subcategory" value={previewFile.subcategory} onChange={(e) => handleTagChange(index, 'subcategory', e.target.value)} />
+                    <FormControl>
+                      <FormLabel fontSize="sm">Subcategory</FormLabel>
+                      <Input size="sm" placeholder="Enter subcategory" value={previewFile.subcategory} onChange={(e) => handleTagChange(index, 'subcategory', e.target.value)} />
                     </FormControl>
-                    <FormControl mt={2}>
-                      <FormLabel>Color</FormLabel>
-                      <Input placeholder="Enter color" value={previewFile.color} onChange={(e) => handleTagChange(index, 'color', e.target.value)} />
+                    <FormControl>
+                      <FormLabel fontSize="sm">Color</FormLabel>
+                      <Input size="sm" placeholder="Enter color" value={previewFile.color} onChange={(e) => handleTagChange(index, 'color', e.target.value)} />
                     </FormControl>
-                  </Box>
-                ))}
-              </VStack>
-            )}
-          </VStack>
+                  </VStack>
+                </HStack>
+              ))}
+            </VStack>
+          )}
         </FormControl>
 
         {closetItems.length > 0 ? (
