@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Heading, Text, Button, VStack, HStack, Input, useToast } from '@chakra-ui/react';
+import { Box, Heading, Text, Button, VStack, HStack, Input, useToast, FormControl, FormLabel } from '@chakra-ui/react';
 import api from '../api/axios';
 import { AxiosError } from 'axios';
 
@@ -16,7 +16,7 @@ interface Clothes {
 const Closet: React.FC = () => {
   const [hasCloset, setHasCloset] = useState<boolean | null>(null);
   const [closetItems, setClosetItems] = useState<Clothes[]>([]);
-  const [newItemImagePath, setNewItemImagePath] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const toast = useToast();
 
   useEffect(() => {
@@ -71,11 +71,33 @@ const Closet: React.FC = () => {
     }
   };
 
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      setSelectedFile(event.target.files[0]);
+    }
+  };
+
   const addItem = async () => {
-    if (!newItemImagePath.trim()) return;
+    if (!selectedFile) {
+      toast({
+        title: 'No file selected',
+        status: 'warning',
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('image', selectedFile);
+
     try {
-      await api.post('/api/user/closet/item', { image_path: newItemImagePath });
-      setNewItemImagePath('');
+      await api.post('/api/user/closet/item', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      setSelectedFile(null);
       checkCloset();
       toast({
         title: 'Item added',
@@ -130,14 +152,19 @@ const Closet: React.FC = () => {
       ) : (
         <VStack spacing={4} align="stretch">
           <Text>Your closet has been created.</Text>
-          <HStack>
-            <Input
-              value={newItemImagePath}
-              onChange={(e) => setNewItemImagePath(e.target.value)}
-              placeholder="New item image path"
-            />
-            <Button onClick={addItem} colorScheme="green">Add Item</Button>
-          </HStack>
+          <FormControl>
+            <FormLabel>Upload a new item</FormLabel>
+            <HStack>
+              <Input
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+              />
+              <Button onClick={addItem} colorScheme="green" isDisabled={!selectedFile}>
+                Add Item
+              </Button>
+            </HStack>
+          </FormControl>
           {closetItems.map((item) => (
             <HStack key={item.id} justify="space-between">
               <Text>{item.category} - {item.subcategory} ({item.color})</Text>
