@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Box, Heading, Text, Button, VStack, HStack, Input, useToast, FormControl, FormLabel, SimpleGrid, Image } from '@chakra-ui/react';
+import { Box, Text, Button, VStack, HStack, Input, useToast, FormControl, FormLabel, SimpleGrid, Image } from '@chakra-ui/react';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
+import { useDropzone, Accept } from 'react-dropzone';
 
 interface Clothes {
   id: string;
@@ -16,7 +17,7 @@ interface Clothes {
 const Closet: React.FC = () => {
   const { isAuthenticated } = useAuth();
   const [closetItems, setClosetItems] = useState<Clothes[]>([]);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const toast = useToast();
 
@@ -46,16 +47,30 @@ const Closet: React.FC = () => {
     }
   }, [isAuthenticated, fetchClosetItems]);
 
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    setSelectedFiles(prev => [...prev, ...acceptedFiles]);
+  }, []);
+
+  const accept: Accept = {
+    'image/*': []
+  };
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept,
+    multiple: true
+  });
+
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files && event.target.files[0]) {
-      setSelectedFile(event.target.files[0]);
+    if (event.target.files) {
+      setSelectedFiles(prev => [...prev, ...Array.from(event.target.files as FileList)]);
     }
   };
 
-  const addItem = async () => {
-    if (!selectedFile) {
+  const addItems = async () => {
+    if (selectedFiles.length === 0) {
       toast({
-        title: 'No file selected',
+        title: 'No files selected',
         status: 'warning',
         duration: 3000,
         isClosable: true,
@@ -63,38 +78,41 @@ const Closet: React.FC = () => {
       return;
     }
 
-    const formData = new FormData();
-    formData.append('image', selectedFile);
+    for (const file of selectedFiles) {
+      const formData = new FormData();
+      formData.append('image', file);
 
-    try {
-      const response = await api.post('/api/user/closet/item', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      try {
+        const response = await api.post('/api/user/closet/item', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
 
-      if (response.data && response.data.item) {
-        setSelectedFile(null);
-        setClosetItems([...closetItems, response.data.item]);
-        console.log('Added item:', response.data.item);
+        if (response.data && response.data.item) {
+          setClosetItems(prev => [...prev, response.data.item]);
+          console.log('Added item:', response.data.item);
+        } else {
+          throw new Error('Invalid response from server');
+        }
+      } catch (error) {
+        console.error('Error adding item:', error);
         toast({
-          title: 'Item added',
-          status: 'success',
+          title: `Error adding item: ${file.name}`,
+          status: 'error',
           duration: 3000,
           isClosable: true,
         });
-      } else {
-        throw new Error('Invalid response from server');
       }
-    } catch (error) {
-      console.error('Error adding item:', error);
-      toast({
-        title: 'Error adding item',
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      });
     }
+
+    setSelectedFiles([]);
+    toast({
+      title: 'Items added successfully',
+      status: 'success',
+      duration: 3000,
+      isClosable: true,
+    });
   };
 
   const deleteItem = async (itemId: string) => {
@@ -126,6 +144,42 @@ const Closet: React.FC = () => {
   return (
     <Box p={8}>
       <VStack spacing={8} align="stretch">
+        <FormControl>
+          <FormLabel>Add new items to your closet</FormLabel>
+          <VStack spacing={4} align="stretch">
+            <Box
+              {...getRootProps()}
+              borderWidth={2}
+              borderStyle="dashed"
+              borderRadius="md"
+              p={4}
+              textAlign="center"
+              bg={isDragActive ? "gray.100" : "white"}
+            >
+              <input {...getInputProps()} />
+              {isDragActive ? (
+                <Text>Drop the files here ...</Text>
+              ) : (
+                <Text>Drag 'n' drop some files here, or click to select files</Text>
+              )}
+            </Box>
+            <HStack>
+              <Input
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                multiple
+              />
+              <Button onClick={addItems} colorScheme="green" isDisabled={selectedFiles.length === 0}>
+                Add Items
+              </Button>
+            </HStack>
+            {selectedFiles.length > 0 && (
+              <Text>{selectedFiles.length} file(s) selected</Text>
+            )}
+          </VStack>
+        </FormControl>
+
         {closetItems.length > 0 ? (
           <SimpleGrid columns={[2, 3, 4]} spacing={4}>
             {closetItems.map((item) => (
@@ -157,19 +211,6 @@ const Closet: React.FC = () => {
         ) : (
           <Text>Your closet is empty. Add some items!</Text>
         )}
-        <FormControl>
-          <FormLabel>Add a new item to your closet</FormLabel>
-          <HStack>
-            <Input
-              type="file"
-              accept="image/*"
-              onChange={handleFileChange}
-            />
-            <Button onClick={addItem} colorScheme="green" isDisabled={!selectedFile}>
-              Add Item
-            </Button>
-          </HStack>
-        </FormControl>
       </VStack>
     </Box>
   );

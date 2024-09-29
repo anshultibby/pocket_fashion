@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Flex } from '@chakra-ui/react';
-import { BrowserRouter as Router, Route, Switch, Redirect } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import './App.css';  // Import the CSS file
 
@@ -26,16 +26,14 @@ function App() {
         <Flex flex={1}>
           {isAuthenticated && <Navigation />}
           <Box flex={1} bg="gray.50">
-            <Switch>
-              <Route exact path="/" render={() => (
-                isAuthenticated ? <Redirect to="/dashboard" /> : <Login />
-              )} />
-              <PrivateRoute path="/dashboard" component={Dashboard} />
-              <PrivateRoute path="/closet" component={Closet} />
-              <PrivateRoute path="/recommendations" component={OutfitRecommendation} />
-              <PrivateRoute path="/try-on" component={VirtualTryOn} />
-              <PrivateRoute path="/shopper" component={PersonalShopper} />
-            </Switch>
+            <Routes>
+              <Route path="/" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Login />} />
+              <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+              <Route path="/closet" element={<PrivateRoute><Closet /></PrivateRoute>} />
+              <Route path="/recommendations" element={<PrivateRoute><OutfitRecommendation /></PrivateRoute>} />
+              <Route path="/try-on" element={<PrivateRoute><VirtualTryOn /></PrivateRoute>} />
+              <Route path="/shopper" element={<PrivateRoute><PersonalShopper /></PrivateRoute>} />
+            </Routes>
           </Box>
         </Flex>
         <Footer />

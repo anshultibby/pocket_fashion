@@ -1,15 +1,15 @@
 import React from 'react';
 import { Box, Flex, Heading, Button } from '@chakra-ui/react';
 import { useAuth } from '../../context/AuthContext';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 const Header: React.FC = () => {
   const { isAuthenticated, logout } = useAuth();
-  const history = useHistory();
+  const navigate = useNavigate();
 
-  const handleLogout = async () => {
-    await logout();
-    history.push('/');
+  const handleLogout = () => {
+    logout();
+    navigate('/');
   };
 
   return (

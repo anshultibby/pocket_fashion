@@ -2,12 +2,12 @@ import React from 'react';
 import { Button, useToast, Box } from '@chakra-ui/react';
 import { useGoogleLogin } from '@react-oauth/google';
 import axios from 'axios';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const GoogleLoginButton: React.FC = () => {
   const toast = useToast();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { login } = useAuth();
 
   const googleLogin = useGoogleLogin({
@@ -21,7 +21,7 @@ const GoogleLoginButton: React.FC = () => {
         const { access_token } = response.data;
         localStorage.setItem('token', access_token);
         login(access_token);
-        history.push('/dashboard');
+        navigate('/dashboard');
         
         toast({
           title: "Login Successful",
