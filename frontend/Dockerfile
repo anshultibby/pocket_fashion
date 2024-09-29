@@ -1,5 +1,5 @@
 # Use an official Node runtime as the base image
-FROM node:14
+FROM node:20
 
 # Set the working directory in the container
 WORKDIR /app
@@ -13,18 +13,8 @@ RUN npm install
 # Copy the rest of the application code to the working directory
 COPY . .
 
-# Build the React application
-RUN npm run build
-
-# Install serve to run the application
-RUN npm install -g serve
-
 # Expose the port the app runs on
 EXPOSE 3000
 
-# Add these lines
-RUN ls -la
-RUN ls -la build
-
-# Command to run the application
-CMD ["serve", "-s", "build", "-l", "3000"]
+# Command to run the application in development mode
+CMD ["npm", "start"]
