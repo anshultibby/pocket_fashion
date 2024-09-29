@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Heading, Text, Button, VStack, HStack, Input, useToast, FormControl, FormLabel } from '@chakra-ui/react';
+import { Box, Heading, Text, Button, VStack, HStack, Input, useToast, FormControl, FormLabel, SimpleGrid, Image } from '@chakra-ui/react';
 import api from '../api/axios';
-import { AxiosError } from 'axios';
 
 interface Clothes {
   id: string;
@@ -14,60 +13,31 @@ interface Clothes {
 }
 
 const Closet: React.FC = () => {
-  const [hasCloset, setHasCloset] = useState<boolean | null>(null);
   const [closetItems, setClosetItems] = useState<Clothes[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const toast = useToast();
 
   useEffect(() => {
-    checkCloset();
+    fetchClosetItems();
   }, []);
 
-  const checkCloset = async () => {
+  const fetchClosetItems = async () => {
+    setIsLoading(true);
     try {
       const response = await api.get('/api/user/closet');
-      setHasCloset(true);
-      setClosetItems(response.data.closet_stats.items || []);
+      setClosetItems(response.data.items || []);
     } catch (error) {
-      console.error('Error fetching closet:', error);
-      if ((error as AxiosError).response?.status === 404) {
-        setHasCloset(false);
-      } else if ((error as AxiosError).response?.status === 401) {
-        // Redirect to login page or refresh token
-        window.location.href = '/';
-      } else {
-        toast({
-          title: 'Error checking closet',
-          description: 'An unexpected error occurred',
-          status: 'error',
-          duration: 3000,
-          isClosable: true,
-        });
-      }
-    }
-  };
-
-  const createCloset = async () => {
-    try {
-      const response = await api.post('/api/user/closet', {});
+      console.error('Error fetching closet items:', error);
       toast({
-        title: 'Closet created',
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      });
-      setHasCloset(true);
-      // If the API returns the created closet data, you can set it here
-      // setClosetItems(response.data.closet_stats.items || []);
-    } catch (error) {
-      console.error('Error creating closet:', error);
-      toast({
-        title: 'Error creating closet',
+        title: 'Error fetching closet items',
         description: 'An unexpected error occurred',
         status: 'error',
         duration: 3000,
         isClosable: true,
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -92,13 +62,13 @@ const Closet: React.FC = () => {
     formData.append('image', selectedFile);
 
     try {
-      await api.post('/api/user/closet/item', formData, {
+      const response = await api.post('/api/user/closet/item', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
       setSelectedFile(null);
-      checkCloset();
+      setClosetItems([...closetItems, response.data.item]);
       toast({
         title: 'Item added',
         status: 'success',
@@ -119,7 +89,7 @@ const Closet: React.FC = () => {
   const deleteItem = async (itemId: string) => {
     try {
       await api.delete(`/api/user/closet/item/${itemId}`);
-      checkCloset();
+      setClosetItems(closetItems.filter(item => item.id !== itemId));
       toast({
         title: 'Item deleted',
         status: 'success',
@@ -137,42 +107,46 @@ const Closet: React.FC = () => {
     }
   };
 
-  if (hasCloset === null) {
+  if (isLoading) {
     return <Box p={8}>Loading...</Box>;
   }
 
   return (
     <Box p={8}>
       <Heading mb={4}>My Closet</Heading>
-      {!hasCloset ? (
-        <VStack spacing={4} align="stretch">
-          <Text>You don't have a closet yet.</Text>
-          <Button onClick={createCloset} colorScheme="blue">Create Closet</Button>
-        </VStack>
-      ) : (
-        <VStack spacing={4} align="stretch">
-          <Text>Your closet has been created.</Text>
-          <FormControl>
-            <FormLabel>Upload a new item</FormLabel>
-            <HStack>
-              <Input
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-              />
-              <Button onClick={addItem} colorScheme="green" isDisabled={!selectedFile}>
-                Add Item
-              </Button>
-            </HStack>
-          </FormControl>
-          {closetItems.map((item) => (
-            <HStack key={item.id} justify="space-between">
-              <Text>{item.category} - {item.subcategory} ({item.color})</Text>
-              <Button onClick={() => deleteItem(item.id)} colorScheme="red" size="sm">Delete</Button>
-            </HStack>
-          ))}
-        </VStack>
-      )}
+      <VStack spacing={8} align="stretch">
+        {closetItems.length > 0 ? (
+          <SimpleGrid columns={[2, 3, 4]} spacing={4}>
+            {closetItems.map((item) => (
+              <Box key={item.id} borderWidth={1} borderRadius="lg" overflow="hidden">
+                <Image src={item.image_path} alt={`${item.category} - ${item.subcategory}`} />
+                <Box p={2}>
+                  <Text fontSize="sm">{item.category} - {item.subcategory}</Text>
+                  <Text fontSize="xs" color="gray.500">{item.color}</Text>
+                  <Button onClick={() => deleteItem(item.id)} size="xs" colorScheme="red" mt={2}>
+                    Delete
+                  </Button>
+                </Box>
+              </Box>
+            ))}
+          </SimpleGrid>
+        ) : (
+          <Text>Your closet is empty. Add some items!</Text>
+        )}
+        <FormControl>
+          <FormLabel>Add a new item to your closet</FormLabel>
+          <HStack>
+            <Input
+              type="file"
+              accept="image/*"
+              onChange={handleFileChange}
+            />
+            <Button onClick={addItem} colorScheme="green" isDisabled={!selectedFile}>
+              Add Item
+            </Button>
+          </HStack>
+        </FormControl>
+      </VStack>
     </Box>
   );
 };

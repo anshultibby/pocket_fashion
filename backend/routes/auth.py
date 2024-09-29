@@ -1,11 +1,20 @@
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, HTTPException, Response
 from modules.auth import google_auth, get_current_user, GoogleToken, User, Token
+from modules.closet import Closet
 
 router = APIRouter()
 
 @router.post("/api/auth/google", response_model=Token)
 async def login_with_google(google_token: GoogleToken):
-    return await google_auth(google_token)
+    auth_result = await google_auth(google_token)
+    user = auth_result["user"]
+    
+    # Ensure user has a closet
+    closet = Closet(user.id)
+    if not closet.exists():
+        Closet.create(user.id)
+    
+    return auth_result
 
 @router.get("/api/auth/verify", response_model=User)
 async def verify_token(current_user: User = Depends(get_current_user)):

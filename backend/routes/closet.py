@@ -1,7 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from modules.auth import get_current_user, User
 from modules.closet import Closet
 from models.models import Clothes
+import shutil
+import os
+import uuid
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -9,13 +15,14 @@ router = APIRouter()
 async def get_closet(current_user: User = Depends(get_current_user)):
     try:
         closet = Closet(current_user.id)
-        stats = closet.get_closet_stats()
+        items = closet.get_all_items()
         return {
             "message": "Closet retrieved successfully",
-            "closet_stats": stats
+            "items": [item.to_dict() for item in items]
         }
     except Exception as e:
-        raise HTTPException(status_code=404, detail="Closet not found")
+        logger.error(f"Error retrieving closet: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error retrieving closet")
 
 @router.post("/api/user/closet")
 async def create_closet(current_user: User = Depends(get_current_user)):
@@ -33,13 +40,39 @@ async def create_closet(current_user: User = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 @router.post("/api/user/closet/item")
-async def add_closet_item(item: Clothes, current_user: User = Depends(get_current_user)):
+async def add_closet_item(
+    image: UploadFile = File(...),
+    current_user: User = Depends(get_current_user)
+):
     try:
         closet = Closet(current_user.id)
-        closet.add_item(item.image_path)
+        
+        # Create a temporary file to store the uploaded image
+        temp_file = f"/tmp/{uuid.uuid4()}.jpg"
+        try:
+            with open(temp_file, "wb") as buffer:
+                shutil.copyfileobj(image.file, buffer)
+        except Exception as e:
+            logger.error(f"Error saving uploaded file: {str(e)}")
+            raise HTTPException(status_code=400, detail="Error saving uploaded file")
+        
+        # Add the item to the closet
+        try:
+            closet.add_item(temp_file)
+        except Exception as e:
+            logger.error(f"Error adding item to closet: {str(e)}")
+            raise HTTPException(status_code=400, detail="Error adding item to closet")
+        
+        # Remove the temporary file
+        try:
+            os.remove(temp_file)
+        except Exception as e:
+            logger.warning(f"Error removing temporary file: {str(e)}")
+        
         return {"message": "Item added to closet successfully"}
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Error adding item to closet: {str(e)}")
+        logger.error(f"Unexpected error in add_closet_item: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.delete("/api/user/closet/item/{item_id}")
 async def delete_closet_item(item_id: str, current_user: User = Depends(get_current_user)):

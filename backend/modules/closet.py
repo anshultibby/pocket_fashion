@@ -6,6 +6,10 @@ import json
 from collections import Counter
 from models.models import Clothes
 from config import env
+import shutil
+import logging
+
+logger = logging.getLogger(__name__)
 
 def segment_and_categorize_image(image_path: str) -> Dict[str, any]:
     # This is a placeholder function
@@ -40,25 +44,42 @@ class Closet:
             df.to_csv(self.csv_path, index=False)
             return df
 
-    def add_item(self, image_path: str) -> None:
-        new_image_path = os.path.join(self.image_dir, f"{uuid.uuid4()}.jpg")
-        os.rename(image_path, new_image_path)
-
-        result = segment_and_categorize_image(new_image_path)
-
-        for item in result['items']:
-            clothes = Clothes(
-                id=str(uuid.uuid4()),
-                image_path=new_image_path,
-                clothes_mask=result['clothes_mask'],
-                category=item['category'],
-                subcategory=item['subcategory'],
-                color=item['color'],
-                attributes=item['attributes']
-            )
-            self.df = self.df.append(clothes.to_dict(), ignore_index=True)
-
-        self._save_df()
+    def add_item(self, image_path: str) -> Dict[str, Any]:
+        try:
+            new_image_path = os.path.join(self.image_dir, f"{uuid.uuid4()}.jpg")
+            shutil.copy(image_path, new_image_path)
+            
+            result = segment_and_categorize_image(new_image_path)
+            
+            new_items = []
+            for item in result['items']:
+                # Ensure attributes is a dictionary
+                attributes = item.get('attributes', {})
+                if isinstance(attributes, str):
+                    try:
+                        attributes = json.loads(attributes)
+                    except json.JSONDecodeError:
+                        attributes = {}
+                
+                clothes = Clothes(
+                    id=str(uuid.uuid4()),
+                    image_path=new_image_path,
+                    clothes_mask=result['clothes_mask'],
+                    category=item['category'],
+                    subcategory=item['subcategory'],
+                    color=item['color'],
+                    attributes=attributes  # Use the processed attributes
+                )
+                new_items.append(clothes.to_dict())
+            
+            # Use concat instead of append
+            self.df = pd.concat([self.df, pd.DataFrame([new_items[0]])], ignore_index=True)
+            
+            self._save_df()
+            return new_items[0]
+        except Exception as e:
+            logger.error(f"Error in add_item: {str(e)}")
+            raise
 
     def delete_item(self, item_id: str) -> bool:
         item = self.df[self.df['id'] == item_id]
