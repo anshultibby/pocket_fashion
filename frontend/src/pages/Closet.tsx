@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Box, Text, Button, VStack, HStack, Input, useToast, FormControl, FormLabel, SimpleGrid, Image } from '@chakra-ui/react';
+import { Box, Text, Button, VStack, HStack, Input, useToast, FormControl, FormLabel, SimpleGrid, Image, Select } from '@chakra-ui/react';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { useDropzone, Accept } from 'react-dropzone';
+import './Closet.css'; // Import the CSS file
 
 interface Clothes {
   id: string;
@@ -14,10 +15,18 @@ interface Clothes {
   attributes: Record<string, any>;
 }
 
+interface PreviewFile {
+  file: File;
+  preview: string;
+  category: string;
+  subcategory: string;
+  color: string;
+}
+
 const Closet: React.FC = () => {
   const { isAuthenticated } = useAuth();
   const [closetItems, setClosetItems] = useState<Clothes[]>([]);
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [previewFiles, setPreviewFiles] = useState<PreviewFile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const toast = useToast();
 
@@ -48,7 +57,14 @@ const Closet: React.FC = () => {
   }, [isAuthenticated, fetchClosetItems]);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
-    setSelectedFiles(prev => [...prev, ...acceptedFiles]);
+    const newPreviewFiles = acceptedFiles.map(file => ({
+      file,
+      preview: URL.createObjectURL(file),
+      category: '',
+      subcategory: '',
+      color: ''
+    }));
+    setPreviewFiles(prev => [...prev, ...newPreviewFiles]);
   }, []);
 
   const accept: Accept = {
@@ -63,12 +79,27 @@ const Closet: React.FC = () => {
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
-      setSelectedFiles(prev => [...prev, ...Array.from(event.target.files as FileList)]);
+      const newPreviewFiles = Array.from(event.target.files).map(file => ({
+        file,
+        preview: URL.createObjectURL(file),
+        category: '',
+        subcategory: '',
+        color: ''
+      }));
+      setPreviewFiles(prev => [...prev, ...newPreviewFiles]);
     }
   };
 
+  const handleTagChange = (index: number, field: string, value: string) => {
+    setPreviewFiles(prev => {
+      const updatedFiles = [...prev];
+      updatedFiles[index] = { ...updatedFiles[index], [field]: value };
+      return updatedFiles;
+    });
+  };
+
   const addItems = async () => {
-    if (selectedFiles.length === 0) {
+    if (previewFiles.length === 0) {
       toast({
         title: 'No files selected',
         status: 'warning',
@@ -78,9 +109,12 @@ const Closet: React.FC = () => {
       return;
     }
 
-    for (const file of selectedFiles) {
+    for (const previewFile of previewFiles) {
       const formData = new FormData();
-      formData.append('image', file);
+      formData.append('image', previewFile.file);
+      formData.append('category', previewFile.category);
+      formData.append('subcategory', previewFile.subcategory);
+      formData.append('color', previewFile.color);
 
       try {
         const response = await api.post('/api/user/closet/item', formData, {
@@ -98,7 +132,7 @@ const Closet: React.FC = () => {
       } catch (error) {
         console.error('Error adding item:', error);
         toast({
-          title: `Error adding item: ${file.name}`,
+          title: `Error adding item: ${previewFile.file.name}`,
           status: 'error',
           duration: 3000,
           isClosable: true,
@@ -106,7 +140,7 @@ const Closet: React.FC = () => {
       }
     }
 
-    setSelectedFiles([]);
+    setPreviewFiles([]);
     toast({
       title: 'Items added successfully',
       status: 'success',
@@ -170,12 +204,34 @@ const Closet: React.FC = () => {
                 onChange={handleFileChange}
                 multiple
               />
-              <Button onClick={addItems} colorScheme="green" isDisabled={selectedFiles.length === 0}>
+              <Button onClick={addItems} colorScheme="green" isDisabled={previewFiles.length === 0}>
                 Add Items
               </Button>
             </HStack>
-            {selectedFiles.length > 0 && (
-              <Text>{selectedFiles.length} file(s) selected</Text>
+            {previewFiles.length > 0 && (
+              <VStack spacing={4} align="stretch">
+                {previewFiles.map((previewFile, index) => (
+                  <Box key={index} borderWidth={1} borderRadius="lg" overflow="hidden" p={4}>
+                    <Image src={previewFile.preview} alt="Preview" width="100%" height="200px" objectFit="cover" />
+                    <FormControl mt={2}>
+                      <FormLabel>Category</FormLabel>
+                      <Select placeholder="Select category" value={previewFile.category} onChange={(e) => handleTagChange(index, 'category', e.target.value)}>
+                        <option value="top">Top</option>
+                        <option value="bottom">Bottom</option>
+                        <option value="accessory">Accessory</option>
+                      </Select>
+                    </FormControl>
+                    <FormControl mt={2}>
+                      <FormLabel>Subcategory</FormLabel>
+                      <Input placeholder="Enter subcategory" value={previewFile.subcategory} onChange={(e) => handleTagChange(index, 'subcategory', e.target.value)} />
+                    </FormControl>
+                    <FormControl mt={2}>
+                      <FormLabel>Color</FormLabel>
+                      <Input placeholder="Enter color" value={previewFile.color} onChange={(e) => handleTagChange(index, 'color', e.target.value)} />
+                    </FormControl>
+                  </Box>
+                ))}
+              </VStack>
             )}
           </VStack>
         </FormControl>
@@ -183,7 +239,7 @@ const Closet: React.FC = () => {
         {closetItems.length > 0 ? (
           <SimpleGrid columns={[2, 3, 4]} spacing={4}>
             {closetItems.map((item) => (
-              <Box key={item.id} borderWidth={1} borderRadius="lg" overflow="hidden">
+              <Box key={item.id} className="item-container">
                 <Image
                   className="image-container"
                   src={`${process.env.REACT_APP_API_URL}${item.image_path}`}
@@ -199,11 +255,17 @@ const Closet: React.FC = () => {
                   onLoad={() => console.log('Image loaded:', `${process.env.REACT_APP_API_URL}${item.image_path}`)}
                 />
                 <Box p={2}>
-                  <Text fontSize="sm">{item.category} - {item.subcategory}</Text>
-                  <Text fontSize="xs" color="gray.500">{item.color}</Text>
-                  <Button onClick={() => deleteItem(item.id)} size="xs" colorScheme="red" mt={2}>
-                    Delete
-                  </Button>
+                  <Box className="item-options">
+                    <Button onClick={() => deleteItem(item.id)} size="xs" colorScheme="red" mt={2}>
+                      Delete
+                    </Button>
+                    {/* Add Edit button here if needed */}
+                  </Box>
+                  <Box className="item-tags">
+                    <Text fontSize="xs">{item.category}</Text>
+                    <Text fontSize="xs">{item.subcategory}</Text>
+                    <Text fontSize="xs">{item.color}</Text>
+                  </Box>
                 </Box>
               </Box>
             ))}

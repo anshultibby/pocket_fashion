@@ -1,0 +1,31 @@
+.item-container {
+  position: relative;
+  border-width: 1px;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.item-options, .item-tags {
+  position: absolute;
+  display: none;
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  padding: 0.5rem;
+}
+
+.item-options {
+  top: 0;
+  right: 0;
+  border-bottom-left-radius: 0.5rem;
+}
+
+.item-tags {
+  bottom: 0;
+  left: 0;
+  border-top-right-radius: 0.5rem;
+}
+
+.item-container:hover .item-options,
+.item-container:hover .item-tags {
+  display: block;
+}
