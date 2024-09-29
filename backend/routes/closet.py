@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from modules.auth import get_current_user, User
 from modules.closet import Closet
-from models.models import Clothes
 import shutil
 import os
 import uuid
@@ -23,21 +22,6 @@ async def get_closet(current_user: User = Depends(get_current_user)):
     except Exception as e:
         logger.error(f"Error retrieving closet: {str(e)}")
         raise HTTPException(status_code=500, detail="Error retrieving closet")
-
-@router.post("/api/user/closet")
-async def create_closet(current_user: User = Depends(get_current_user)):
-    try:
-        # Check if the user already has a closet
-        existing_closet = Closet(current_user.id)
-        if existing_closet.exists():
-            return {"message": "Closet already exists for this user"}
-
-        # Create a new closet
-        new_closet = Closet.create(current_user.id)
-        return {"message": "Closet created successfully"}
-    except Exception as e:
-        print(f"Error creating closet: {str(e)}")  # Log the error
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 @router.post("/api/user/closet/item")
 async def add_closet_item(
@@ -74,13 +58,4 @@ async def add_closet_item(
         logger.error(f"Unexpected error in add_closet_item: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
-@router.delete("/api/user/closet/item/{item_id}")
-async def delete_closet_item(item_id: str, current_user: User = Depends(get_current_user)):
-    try:
-        closet = Closet(current_user.id)
-        if closet.delete_item(item_id):
-            return {"message": "Item deleted from closet successfully"}
-        else:
-            raise HTTPException(status_code=404, detail="Item not found in closet")
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Error deleting item from closet: {str(e)}")
+# ... other routes ...
