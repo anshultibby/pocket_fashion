@@ -25,7 +25,7 @@ function App() {
         <Header />
         <Flex flex={1}>
           {isAuthenticated && <Navigation />}
-          <Box flex={1}>
+          <Box flex={1} bg="gray.50">
             <Switch>
               <Route exact path="/" render={() => (
                 isAuthenticated ? <Redirect to="/dashboard" /> : <Login />

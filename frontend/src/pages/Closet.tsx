@@ -125,7 +125,6 @@ const Closet: React.FC = () => {
 
   return (
     <Box p={8}>
-      <Heading mb={4}>My Closet</Heading>
       <VStack spacing={8} align="stretch">
         {closetItems.length > 0 ? (
           <SimpleGrid columns={[2, 3, 4]} spacing={4}>

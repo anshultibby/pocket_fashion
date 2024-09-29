@@ -15,7 +15,7 @@ const Header: React.FC = () => {
   return (
     <Box bg="brand.500" py={4} px={6}>
       <Flex alignItems="center" justifyContent="space-between">
-        <Heading color="white">Pocket Fashion</Heading>
+        <Heading color="white">Style Shuffle</Heading>
         {isAuthenticated && (
           <Button onClick={handleLogout} colorScheme="red">
             Logout
