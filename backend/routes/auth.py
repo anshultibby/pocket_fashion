@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, Response
 from modules.login import google_auth, get_current_user, GoogleToken, User, Token
 
 router = APIRouter()

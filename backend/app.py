@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from routes import router
+from routes import auth, closet
 import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -13,7 +13,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(router)
+app.include_router(auth.router)
+app.include_router(closet.router)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
