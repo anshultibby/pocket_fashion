@@ -27,7 +27,7 @@ def segment_and_categorize_image(image_path: str) -> Dict[str, any]:
 class Closet:
     def __init__(self, user_id: str):
         self.user_id = user_id
-        self.csv_path = os.path.join(env.BASE_CLOSETS_PATH, f"{user_id}_closet.csv")
+        self.csv_path = os.path.join(env.CLOSETS_DIR, f"{user_id}_closet.csv")
         self.image_dir = os.path.join(env.IMAGES_DIR, user_id)
         os.makedirs(self.image_dir, exist_ok=True)
         self.df = self._load_or_create_df()
@@ -139,6 +139,21 @@ class Closet:
             stats['attribute_distribution'] = dict(attribute_types)
 
         return stats
+
+    def exists(self) -> bool:
+        """Check if a closet already exists for this user."""
+        return os.path.exists(self.csv_path)
+
+    @classmethod
+    def create(cls, user_id: str):
+        """Create a new closet for the user."""
+        new_closet = cls(user_id)
+        if not new_closet.exists():
+            # Create the CSV file if it doesn't exist
+            new_closet._save_df()
+            # Create the image directory if it doesn't exist
+            os.makedirs(new_closet.image_dir, exist_ok=True)
+        return new_closet
 
 # Usage example
 if __name__ == "__main__":

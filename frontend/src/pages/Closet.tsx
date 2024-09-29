@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Heading, Text, Button, VStack, HStack, Input, useToast } from '@chakra-ui/react';
 import api from '../api/axios';
+import { AxiosError } from 'axios';
 
 interface Clothes {
   id: string;
@@ -13,7 +14,7 @@ interface Clothes {
 }
 
 const Closet: React.FC = () => {
-  const [hasCloset, setHasCloset] = useState(false);
+  const [hasCloset, setHasCloset] = useState<boolean | null>(null);
   const [closetItems, setClosetItems] = useState<Clothes[]>([]);
   const [newItemImagePath, setNewItemImagePath] = useState('');
   const toast = useToast();
@@ -29,13 +30,26 @@ const Closet: React.FC = () => {
       setClosetItems(response.data.closet_stats.items || []);
     } catch (error) {
       console.error('Error fetching closet:', error);
-      setHasCloset(false);
+      if ((error as AxiosError).response?.status === 404) {
+        setHasCloset(false);
+      } else if ((error as AxiosError).response?.status === 401) {
+        // Redirect to login page or refresh token
+        window.location.href = '/';
+      } else {
+        toast({
+          title: 'Error checking closet',
+          description: 'An unexpected error occurred',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        });
+      }
     }
   };
 
   const createCloset = async () => {
     try {
-      await api.post('/api/user/closet');
+      const response = await api.post('/api/user/closet', {});
       toast({
         title: 'Closet created',
         status: 'success',
@@ -43,11 +57,13 @@ const Closet: React.FC = () => {
         isClosable: true,
       });
       setHasCloset(true);
-      checkCloset();
+      // If the API returns the created closet data, you can set it here
+      // setClosetItems(response.data.closet_stats.items || []);
     } catch (error) {
       console.error('Error creating closet:', error);
       toast({
         title: 'Error creating closet',
+        description: 'An unexpected error occurred',
         status: 'error',
         duration: 3000,
         isClosable: true,
@@ -98,6 +114,10 @@ const Closet: React.FC = () => {
       });
     }
   };
+
+  if (hasCloset === null) {
+    return <Box p={8}>Loading...</Box>;
+  }
 
   return (
     <Box p={8}>

@@ -4,6 +4,7 @@ from pydantic import BaseSettings
 class EnvVar(BaseSettings):
     CLOSETS_DIR: str = 'data/closets/'
     IMAGES_DIR: str = 'data/images/'
+    DATA_DIR: str = 'data/'
 
     class Config:
         env_file = ".env"

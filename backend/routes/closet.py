@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from modules.login import get_current_user, User
+from modules.auth import get_current_user, User
 from modules.closet import Closet
 from models.models import Clothes
 
@@ -20,10 +20,17 @@ async def get_closet(current_user: User = Depends(get_current_user)):
 @router.post("/api/user/closet")
 async def create_closet(current_user: User = Depends(get_current_user)):
     try:
-        closet = Closet.create(current_user.id)
+        # Check if the user already has a closet
+        existing_closet = Closet(current_user.id)
+        if existing_closet.exists():
+            return {"message": "Closet already exists for this user"}
+
+        # Create a new closet
+        new_closet = Closet.create(current_user.id)
         return {"message": "Closet created successfully"}
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Error creating closet: {str(e)}")
+        print(f"Error creating closet: {str(e)}")  # Log the error
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 @router.post("/api/user/closet/item")
 async def add_closet_item(item: Clothes, current_user: User = Depends(get_current_user)):
