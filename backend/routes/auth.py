@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from modules.auth import login_google, auth_google, create_token, get_current_user, User
+from modules.auth import login_google, auth_google, create_token, get_current_user, User, GoogleToken
 
 router = APIRouter()
 
@@ -7,9 +7,9 @@ router = APIRouter()
 async def google_login():
     return login_google()
 
-@router.get("/api/auth/google/callback")
-async def google_auth(code: str):
-    user = await auth_google(code)
+@router.post("/api/auth/google")
+async def google_auth(google_token: GoogleToken):
+    user = await auth_google(google_token)
     token = create_token(user)
     return {"access_token": token, "token_type": "bearer"}
 
