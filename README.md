@@ -6,3 +6,14 @@ Trying to create an algorithm which will:
 3. Recommend outfits as a combination of frequency and match, with goals to maximise user seredipity.
 4. Allow virtual try outs by showing you photos of you with an outfit.
 5. Crawl the web to look for outfits that complete your closet, as a personal shopper.
+
+
+Use following github repos:
+
+Segmentation model: https://github.com/wildoctopus/huggingface-cloth-segmentation
+Attribute classifier: https://github.com/FarnooshGhadiri/Cloth_category_classifier/tree/master
+FashionCLIP: https://huggingface.co/Marqo/marqo-fashionSigLIP
+
+Useful Datasets:
+DeepFashion:
+https://drive.google.com/drive/folders/0B7EVK8r0v71pQ2FuZ0k0QnhBQnc?resourcekey=0-NWldFxSChFuCpK4nzAIGsg

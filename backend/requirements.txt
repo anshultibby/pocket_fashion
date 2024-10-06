@@ -11,3 +11,8 @@ numpy>=1.21.5
 fastapi-sessions
 python-jose
 aiofiles
+torch
+torchvision
+gdown
+matplotlib
+open_clip_torch
