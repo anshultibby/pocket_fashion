@@ -11,8 +11,10 @@ Trying to create an algorithm which will:
 Use following github repos:
 
 Segmentation model: https://github.com/wildoctopus/huggingface-cloth-segmentation
-Attribute classifier: https://github.com/FarnooshGhadiri/Cloth_category_classifier/tree/master
 FashionCLIP: https://huggingface.co/Marqo/marqo-fashionSigLIP
+Zero shot segmentation: https://github.com/ZiqinZhou66/ZegCLIP
+Some data sources: https://medium.com/data4fashion/need-some-datasets-for-your-data-science-projects-1f7b0d28e9df
+Reddit: r/fashiondreamer
 
 Useful Datasets:
 DeepFashion:
