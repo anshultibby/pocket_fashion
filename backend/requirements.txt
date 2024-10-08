@@ -15,7 +15,7 @@ torch
 torchvision
 gdown
 matplotlib
-transformers
 jupyter
 ftfy
-opne_clip_torch
+open_clip_torch
+transformers

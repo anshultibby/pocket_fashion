@@ -3,6 +3,7 @@ from transformers import AutoModel, AutoProcessor
 from PIL import Image
 import argparse
 import pandas as pd
+import numpy as np
 
 
 model = AutoModel.from_pretrained('Marqo/marqo-fashionSigLIP', trust_remote_code=True)
@@ -10,7 +11,21 @@ processor = AutoProcessor.from_pretrained('Marqo/marqo-fashionSigLIP', trust_rem
 styles = pd.read_csv(f"data/datasets/all_styles_processed.csv")
 style_dict = {label_type: list(group['label_value'].unique()) \
               for label_type, group in styles.groupby('label_type')}
-RELATIVE_THRESHOLD = 0.8
+RELATIVE_THRESHOLD = 0.5
+SAVED_EMBEDDINGS_PATH = "data/category_embeddings.npy"
+
+# Load pre-computed text features
+text_features_dict = np.load(SAVED_EMBEDDINGS_PATH, allow_pickle=True).item()
+
+def apply_mask(image, mask_path=None):
+    if mask_path is None:
+        return image
+    image_array = np.array(image)
+    mask = Image.open(mask_path).convert('L')  # Convert to grayscale
+    mask_array = np.array(mask)
+    mask_array = mask_array / 255.0
+    masked_image_array = image_array * mask_array[:, :, np.newaxis]
+    return Image.fromarray(masked_image_array.astype('uint8'))
 
 
 def main():
@@ -23,24 +38,22 @@ def main():
     mask_idx = args.mask_idx
     image_stem = image_path.split("/")[-1].split(".")[0]
     if mask_idx != 0:
-        mask_path = f"data/alpha/{image_stem}_{mask_idx}.jpg"
+        mask_path = f"data/alpha/{image_stem}_{mask_idx}.png"
     else:
         mask_path = None
 
     # Load and process the image
-    image = [Image.open(image_path)]
-    mask = [Image.open(mask_path)] if mask_path else None
+    image = Image.open(image_path)
+    image = apply_mask(image, mask_path)
 
-    processed = processor(images=image, padding='max_length', return_tensors="pt")
+    # Process the image
+    processed = processor(images=[image], padding='max_length', return_tensors="pt")
     with torch.no_grad():
         image_features = model.get_image_features(processed['pixel_values'], normalize=True)
 
     text_probs = {}
-    for label_type, label_values in style_dict.items():
-        # Convert label_values to strings
-        label_values = [str(value) for value in label_values]
-        processed = processor(text=label_values, images=image, padding='max_length', return_tensors="pt")
-        text_features = model.get_text_features(processed['input_ids'], normalize=True)
+    for label_type, text_features in text_features_dict.items():
+        text_features = torch.from_numpy(text_features).to(image_features.device)
         text_probs[label_type] = (100.0 * image_features @ text_features.T).softmax(dim=-1).squeeze(0)
 
     for label_type, probs in text_probs.items():
