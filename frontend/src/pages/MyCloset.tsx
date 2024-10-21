@@ -58,36 +58,36 @@ const MyCloset: React.FC = () => {
   return (
     <Grid templateColumns="repeat(auto-fill, minmax(300px, 1fr))" gap={6}>
       {closetItems.map((item) => (
-        <Box key={item.id} borderWidth="1px" borderRadius="lg" overflow="hidden" p={4}>
-          <VStack spacing={2}>
-            <Grid templateColumns="repeat(3, 1fr)" gap={2} width="100%">
+        <Box key={item.id} borderWidth="1px" borderRadius="lg" overflow="hidden" p={4} boxShadow="md">
+          <VStack spacing={4}>
+            <Grid templateColumns="repeat(3, 1fr)" gap={3} width="100%">
               {item.masked_images.map((maskedImage, index) => (
-                <Box key={`masked-${index}`} height="150px" bg="gray.100" borderRadius="md">
+                <Box key={`masked-${index}`} height="150px" bg="gray.50" borderRadius="md">
                   <Image
                     src={getFullImageUrl(maskedImage)}
                     alt={`Masked Image ${index + 1}`}
-                    objectFit="contain"
+                    objectFit="cover"
                     w="100%"
                     h="100%"
                   />
                 </Box>
               ))}
             </Grid>
-            <HStack spacing={2} width="100%">
-              <Box height="60px" width="50%" bg="gray.100" borderRadius="md">
+            <HStack spacing={3} width="100%">
+              <Box height="80px" width="50%" bg="gray.50" borderRadius="md">
                 <Image
                   src={getFullImageUrl(item.image_path)}
                   alt="Original Image"
-                  objectFit="contain"
+                  objectFit="cover"
                   w="100%"
                   h="100%"
                 />
               </Box>
-              <Box height="60px" width="50%" bg="gray.100" borderRadius="md">
+              <Box height="80px" width="50%" bg="gray.50" borderRadius="md">
                 <Image
                   src={getFullImageUrl(item.clothes_mask)}
                   alt="Clothes Mask"
-                  objectFit="contain"
+                  objectFit="cover"
                   w="100%"
                   h="100%"
                 />
