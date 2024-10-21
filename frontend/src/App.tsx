@@ -13,8 +13,9 @@ import PersonalShopper from './pages/PersonalShopper';
 
 import Header from './components/common/Header';
 import Footer from './components/common/Footer';
-import Navigation from './components/common/Navigation';
 import PrivateRoute from './components/common/PrivateRoute';
+import TopNavigation from './components/common/TopNavigation';
+import ClosetSubmenu from './components/closet/ClosetSubmenu';
 
 function App() {
   const { isAuthenticated } = useAuth();
@@ -23,13 +24,22 @@ function App() {
     <Router>
       <Flex direction="column" minHeight="100vh">
         <Header />
+        {isAuthenticated && <TopNavigation />}
         <Flex flex={1}>
-          {isAuthenticated && <Navigation />}
           <Box flex={1} bg="gray.50">
             <Routes>
               <Route path="/" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Login />} />
               <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-              <Route path="/closet" element={<PrivateRoute><Closet /></PrivateRoute>} />
+              <Route path="/closet/*" element={
+                <PrivateRoute>
+                  <Flex>
+                    <ClosetSubmenu />
+                    <Box flex={1}>
+                      <Closet />
+                    </Box>
+                  </Flex>
+                </PrivateRoute>
+              } />
               <Route path="/recommendations" element={<PrivateRoute><OutfitRecommendation /></PrivateRoute>} />
               <Route path="/try-on" element={<PrivateRoute><VirtualTryOn /></PrivateRoute>} />
               <Route path="/shopper" element={<PrivateRoute><PersonalShopper /></PrivateRoute>} />
