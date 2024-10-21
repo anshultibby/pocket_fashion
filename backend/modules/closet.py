@@ -117,24 +117,22 @@ class Closet:
 
     def delete_item(self, item_id: str) -> bool:
         try:
-            # Read the CSV file
-            df = pd.read_csv(self.csv_path)
-            
             # Find the item
-            item = df[df['id'] == item_id]
+            item = self.df[self.df['id'] == item_id]
             if item.empty:
+                logger.warning(f"Item with id {item_id} not found")
                 return False  # Item not found
             
             # Get the image paths
             image_path = item['image_path'].values[0]
             clothes_mask = item['clothes_mask'].values[0]
-            masked_images = json.loads(item['masked_images'].values[0])
+            masked_images = item['masked_images'].values[0]
             
             # Remove the item from the DataFrame
-            df = df[df['id'] != item_id]
+            self.df = self.df[self.df['id'] != item_id]
             
             # Save the updated DataFrame back to CSV
-            df.to_csv(self.csv_path, index=False)
+            self._save_df()
             
             # Delete the image files
             self._delete_file(image_path)
@@ -142,15 +140,23 @@ class Closet:
             for masked_image in masked_images:
                 self._delete_file(masked_image)
             
+            logger.info(f"Successfully deleted item with id {item_id}")
             return True
         except Exception as e:
-            print(f"Error deleting item: {str(e)}")
+            logger.error(f"Error deleting item {item_id}: {str(e)}")
+            logger.exception("Detailed traceback:")
             return False
 
     def _delete_file(self, file_path: str):
         full_path = os.path.join(self.image_dir, file_path)
         if os.path.exists(full_path):
-            os.remove(full_path)
+            try:
+                os.remove(full_path)
+                logger.info(f"Deleted file: {full_path}")
+            except Exception as e:
+                logger.error(f"Error deleting file {full_path}: {str(e)}")
+        else:
+            logger.warning(f"File not found: {full_path}")
 
     def search_items(self, **kwargs) -> List[Clothes]:
         result_df = self.df.copy()
