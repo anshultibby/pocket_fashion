@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Text, SimpleGrid, Spinner, useToast, Image, Flex, Tag, IconButton, Collapse, VStack, Button, Tabs, TabList, TabPanels, Tab, TabPanel } from '@chakra-ui/react';
-import { ChevronDownIcon, ChevronUpIcon, EditIcon } from '@chakra-ui/icons';
+import { Box, Text, SimpleGrid, Spinner, useToast, Image, Flex, Tag, Button, Collapse, VStack, Tabs, TabList, TabPanels, Tab, TabPanel } from '@chakra-ui/react';
+import { ChevronDownIcon, ChevronUpIcon } from '@chakra-ui/icons';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 
@@ -15,13 +15,22 @@ interface ClosetItem {
   id: string;
   path: string;
   classification_results: {
-    [key: string]: any;
+    [key: string]: string;
   };
+}
+
+interface ClosetItemsResponse {
+  items: ClosetItem[];
+}
+
+interface CategoriesResponse {
+  categories: Category[];
 }
 
 const ItemTags: React.FC = () => {
   const [closetItems, setClosetItems] = useState<ClosetItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const { isAuthenticated } = useAuth();
   const toast = useToast();
@@ -35,8 +44,8 @@ const ItemTags: React.FC = () => {
 
       try {
         const [itemsResponse, categoriesResponse] = await Promise.all([
-          api.get<ClosetItemsData>('/api/user/closet-items'),
-          api.get<CategoriesData>('/api/user/closet-categories')
+          api.get<ClosetItemsResponse>('/api/user/closet-items'),
+          api.get<CategoriesResponse>('/api/user/closet-categories')
         ]);
 
         setClosetItems(itemsResponse.data.items);
@@ -78,82 +87,70 @@ const ItemTags: React.FC = () => {
   };
 
   const renderItemGrid = (categoryItems: ClosetItem[]) => (
-    <SimpleGrid columns={[2, 3, 4, 5]} spacing={3} px={4}>
-      {categoryItems.flatMap((item) => 
-        Object.entries(item.classification_results).map(([key, value]) => {
-          const itemId = `${item.id}-${key}`;
-          const isExpanded = expandedItems.has(itemId);
-          return (
-            <Box 
-              key={itemId} 
-              borderWidth={1} 
-              borderRadius="md" 
-              overflow="hidden" 
-              boxShadow="sm" 
-              transition="all 0.3s"
-              _hover={{ boxShadow: "md" }}
-              bg="white"
-            >
-              <Box position="relative">
-                <Image
-                  src={getFullImageUrl(item.path)}
-                  alt={`Masked item`}
-                  objectFit="cover"
-                  w="100%"
-                  h="200px"
-                />
-                <IconButton
-                  aria-label="Edit item"
-                  icon={<EditIcon />}
-                  size="sm"
-                  position="absolute"
-                  top={2}
-                  right={2}
-                  colorScheme="blue"
-                  opacity={0}
-                  _groupHover={{ opacity: 0.8 }}
-                  transition="opacity 0.2s"
-                />
-              </Box>
-              <Box p={2}>
-                <Flex justify="space-between" align="center" mb={1}>
-                  <Text fontSize="sm" fontWeight="bold" color="gray.700">
-                    {value.category}
-                  </Text>
-                  <Tag size="sm" variant="solid" colorScheme="teal">
-                    {value.colour}
-                  </Tag>
-                </Flex>
-                <Button
-                  size="xs"
-                  variant="ghost"
-                  onClick={() => toggleExpand(itemId)}
-                  rightIcon={isExpanded ? <ChevronUpIcon /> : <ChevronDownIcon />}
-                  width="100%"
-                >
-                  {isExpanded ? "Hide Details" : "Show Details"}
-                </Button>
-                <Collapse in={isExpanded} animateOpacity>
-                  <VStack spacing={1} align="stretch" mt={2}>
-                    {Object.entries(value).map(([resultKey, value]) => (
-                      resultKey !== 'category' && resultKey !== 'colour' && (
-                        <Flex key={resultKey} justify="space-between" align="center">
-                          <Text fontSize="xs" fontWeight="medium" color="gray.600" textTransform="capitalize">
-                            {resultKey}:
-                          </Text>
-                          <Text fontSize="xs" color="gray.800">
-                            {value}
-                          </Text>
-                        </Flex>
-                      )
-                    ))}
-                  </VStack>
-                </Collapse>
-              </Box>
+    <SimpleGrid columns={[2, 3, 4, 5]} spacing={4}>
+      {categoryItems.map((item) => {
+        const isExpanded = expandedItems.has(item.id);
+        return (
+          <Box 
+            key={item.id} 
+            borderWidth={1} 
+            borderRadius="lg" 
+            overflow="hidden" 
+            boxShadow="sm"
+            bg="white"
+          >
+            <Box position="relative" paddingBottom="100%"> {/* Creates a square aspect ratio */}
+              <Image
+                src={getFullImageUrl(item.path)}
+                alt={`${item.classification_results.category} item`}
+                objectFit="cover"
+                objectPosition="center 30%" // Shifts the focus slightly upwards
+                position="absolute"
+                top="2%"
+                left="2%"
+                width="96%"
+                height="105%" // Extends beyond the bottom to crop more
+              />
             </Box>
-          );
-        })
-      )}
+            <Box p={3}>
+              <Flex justify="space-between" align="center" mb={2}>
+                <Text fontSize="md" fontWeight="semibold" color="gray.700">
+                  {item.classification_results.category}
+                </Text>
+                <Tag size="sm" variant="solid" colorScheme="teal">
+                  {item.classification_results.colour}
+                </Tag>
+              </Flex>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => toggleExpand(item.id)}
+                rightIcon={isExpanded ? <ChevronUpIcon /> : <ChevronDownIcon />}
+                width="100%"
+                mt={1}
+              >
+                {isExpanded ? "Hide Details" : "Show Details"}
+              </Button>
+              <Collapse in={isExpanded} animateOpacity>
+                <VStack spacing={2} align="stretch" mt={3}>
+                  {Object.entries(item.classification_results).map(([resultKey, value]) => (
+                    resultKey !== 'category' && resultKey !== 'colour' && (
+                      <Flex key={resultKey} justify="space-between" align="center">
+                        <Text fontSize="sm" fontWeight="medium" color="gray.600" textTransform="capitalize">
+                          {resultKey}:
+                        </Text>
+                        <Text fontSize="sm" color="gray.800">
+                          {value}
+                        </Text>
+                      </Flex>
+                    )
+                  ))}
+                </VStack>
+              </Collapse>
+            </Box>
+          </Box>
+        );
+      })}
     </SimpleGrid>
   );
 
@@ -169,18 +166,20 @@ const ItemTags: React.FC = () => {
   }
 
   return (
-    <Box maxW="100%" py={4}>
-      <Tabs>
-        <TabList>
+    <Box maxW="100%" py={8}>
+      <Tabs variant="soft-rounded" colorScheme="blue">
+        <TabList mb={4} overflowX="auto" whiteSpace="nowrap" pb={2}>
           {categories.map((category) => (
-            <Tab key={category.name}>{category.name}</Tab>
+            <Tab key={category.name} mx={1} _selected={{ color: "white", bg: "blue.500" }}>
+              {category.name} ({category.count})
+            </Tab>
           ))}
         </TabList>
         <TabPanels>
           {categories.map((category) => (
-            <TabPanel key={category.name}>
+            <TabPanel key={category.name} px={0}>
               {renderItemGrid(closetItems.filter(item => 
-                Object.values(item.classification_results).some(value => value.category === category.name)
+                item.classification_results.category === category.name
               ))}
             </TabPanel>
           ))}
