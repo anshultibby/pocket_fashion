@@ -57,13 +57,14 @@ async def add_closet_items(
         failed_items = []
 
         for image in images:
-            temp_file = f"/tmp/{uuid.uuid4()}.jpg"
+            item_id = str(uuid.uuid4())
+            temp_file = f"/tmp/{item_id}.jpg"
             try:
                 with open(temp_file, "wb") as buffer:
                     shutil.copyfileobj(image.file, buffer)
                 
                 # Add the item to the closet
-                item = closet.add_item(temp_file)
+                item = closet.add_item(temp_file, item_id)
                 if item:
                     added_items.append(item)
                     logger.info(f"Added item to closet: {item['id']}")

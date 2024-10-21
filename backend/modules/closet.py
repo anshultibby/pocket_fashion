@@ -10,8 +10,10 @@ import logging
 from PIL import Image
 import imagehash
 import ast
+import shutil
 
 from modules.segment import ClothSegmenter
+from modules.classify import classify_image
 
 logger = logging.getLogger(__name__)
 cloth_segmenter = ClothSegmenter()
@@ -19,15 +21,32 @@ CLOSET_COLUMNS = ['id', 'image_path', 'clothes_mask', 'masked_images',
 'combined_mask_image_path', 'category', 'subcategory', 
 'color', 'attributes', 'image_hash']
 
-def segment_and_categorize_image(image_path: str) -> Dict[str, any]:
+def segment_image(image_path: str) -> Dict[str, any]:
     cloth_segmenter.segment(image_path)
     cloth_segmenter.save_results()
-    
     result = {
         'image_path': cloth_segmenter.original_image_path,
         'mask_path': cloth_segmenter.mask_path,
         'masked_image_paths': cloth_segmenter.masked_image_paths,
-        'combined_mask_image_path': cloth_segmenter.combined_mask_image_path,  # Add this line
+        'combined_mask_image_path': cloth_segmenter.combined_mask_image_path,
+    }
+    return result
+
+
+def segment_and_categorize_image(image_path: str) -> Dict[str, any]:
+    segment_result = segment_image(image_path)
+    # classify each masked image
+    for masked_image_path in segment_result['masked_image_paths']:
+        logger.info(f"Classifying image: {masked_image_path}")
+        image = Image.open(masked_image_path)
+        classify_result = classify_image(image)
+        logger.info(f"Classify result: {classify_result}")
+
+    result = {
+        'image_path': segment_result['image_path'],
+        'mask_path': segment_result['mask_path'],
+        'masked_image_paths': segment_result['masked_image_paths'],
+        'combined_mask_image_path': segment_result['combined_mask_image_path'],  # Add this line
         'category': 'unknown',
         'subcategory': 'unknown',
         'color': 'unknown',
@@ -80,7 +99,7 @@ class Closet:
             return True, existing_item.iloc[0].to_dict()
         return False, None
 
-    def add_item(self, image_path: str) -> Dict[str, Any]:
+    def add_item(self, image_path: str, item_id: str) -> Dict[str, Any]:
         exists, existing_item = self.item_exists(image_path)
         if exists:
             logger.info(f"Item already exists in the closet: {image_path}")
@@ -102,7 +121,7 @@ class Closet:
             image_hash = self._image_hash(image_path)
 
             clothes = Clothes(
-                id=str(uuid.uuid4()),
+                id=item_id,
                 image_path=relative_image_path,
                 clothes_mask=relative_mask_path,
                 masked_images=relative_masked_paths,
@@ -131,11 +150,8 @@ class Closet:
                 logger.warning(f"Item with id {item_id} not found")
                 return False  # Item not found
             
-            # Get the image paths
-            image_path = item['image_path'].values[0]
-            clothes_mask = item['clothes_mask'].values[0]
-            masked_images = item['masked_images'].values[0]
-            combined_mask_image = item['combined_mask_image'].values[0]
+            # Get the item folder path
+            item_folder = os.path.join(self.image_dir, item_id)
             
             # Remove the item from the DataFrame
             self.df = self.df[self.df['id'] != item_id]
@@ -143,12 +159,12 @@ class Closet:
             # Save the updated DataFrame back to CSV
             self._save_df()
             
-            # Delete the image files
-            self._delete_file(image_path)
-            self._delete_file(clothes_mask)
-            for masked_image in masked_images:
-                self._delete_file(masked_image)
-            self._delete_file(combined_mask_image)
+            # Delete the item folder
+            if os.path.exists(item_folder):
+                shutil.rmtree(item_folder)
+                logger.info(f"Successfully deleted item folder: {item_folder}")
+            else:
+                logger.warning(f"Item folder not found: {item_folder}")
             
             logger.info(f"Successfully deleted item with id {item_id}")
             return True
@@ -158,7 +174,7 @@ class Closet:
             return False
 
     def _delete_file(self, file_path: str):
-        full_path = os.path.join(self.image_dir, file_path)
+        full_path = os.path.join("/data/images", file_path)
         if os.path.exists(full_path):
             try:
                 os.remove(full_path)
