@@ -1,82 +1,105 @@
 import pandas as pd
 import os
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple, Optional
 import uuid
 import json
 from collections import Counter
 from models.models import Clothes
 from config import env
-import shutil
 import logging
+from PIL import Image
+import imagehash
+
+from modules.segment import ClothSegmenter
 
 logger = logging.getLogger(__name__)
+cloth_segmenter = ClothSegmenter()
 
 def segment_and_categorize_image(image_path: str) -> Dict[str, any]:
-    # This is a placeholder function
-    return {
-        "clothes_mask": "path/to/clothes_mask.png",
-        "items": [
-            {
-                "category": "top",
-                "subcategory": "t-shirt",
-                "color": "blue",
-                "attributes": {
-                    "sleeve": {"submask": "path/to/sleeve_mask.png", "type": "short"},
-                    "neckline": {"submask": "path/to/neckline_mask.png", "type": "round"}
-                }
-            },
-        ]
+    cloth_segmenter.segment(image_path)
+    cloth_segmenter.save_results()
+    
+    result = {
+        'image_path': cloth_segmenter.original_image_path,
+        'mask_path': cloth_segmenter.mask_path,
+        'masked_image_paths': cloth_segmenter.masked_image_paths,
+        'category': 'unknown',
+        'subcategory': 'unknown',
+        'color': 'unknown',
+        'pattern': 'unknown',
+        'material': 'unknown',
+        'style': 'unknown'
     }
+    logger.info(f"Segmentation result: {result}")
+    return result
 
 class Closet:
     def __init__(self, user_id: str):
         self.user_id = user_id
         self.csv_path = os.path.join(env.CLOSETS_DIR, f"{user_id}_closet.csv")
         self.image_dir = os.path.join(env.IMAGES_DIR, user_id)
-        os.makedirs(self.image_dir, exist_ok=True)
         self.df = self._load_or_create_df()
 
     def _load_or_create_df(self) -> pd.DataFrame:
         if os.path.exists(self.csv_path):
-            return pd.read_csv(self.csv_path)
+            df = pd.read_csv(self.csv_path)
+            if 'image_hash' not in df.columns:
+                df['image_hash'] = ''  # Add the column if it doesn't exist
+            return df
         else:
-            df = pd.DataFrame(columns=['id', 'image_path', 'clothes_mask', 'category', 'subcategory', 'color', 'attributes'])
+            df = pd.DataFrame(columns=['id', 'image_path', 'clothes_mask', 'masked_images', 'category', 'subcategory', 'color', 'attributes', 'image_hash'])
             df.to_csv(self.csv_path, index=False)
             return df
 
+    def _image_hash(self, image_path: str) -> str:
+        return str(imagehash.average_hash(Image.open(image_path)))
+
+    def item_exists(self, image_path: str) -> Tuple[bool, Optional[Dict[str, Any]]]:
+        new_hash = self._image_hash(image_path)
+        existing_item = self.df[self.df['image_hash'] == new_hash]
+        if not existing_item.empty:
+            return True, existing_item.iloc[0].to_dict()
+        return False, None
+
     def add_item(self, image_path: str) -> Dict[str, Any]:
+        exists, existing_item = self.item_exists(image_path)
+        if exists:
+            logger.info(f"Item already exists in the closet: {image_path}")
+            return existing_item
+
         try:
-            new_image_filename = f"{uuid.uuid4()}.jpg"
-            new_image_path = os.path.join(self.image_dir, new_image_filename)
-            shutil.copy(image_path, new_image_path)
-            
-            result = segment_and_categorize_image(new_image_path)
-            
-            new_items = []
-            for item in result['items']:
-                attributes = item.get('attributes', {})
-                if isinstance(attributes, str):
-                    try:
-                        attributes = json.loads(attributes)
-                    except json.JSONDecodeError:
-                        attributes = {}
-                
-                clothes = Clothes(
-                    id=str(uuid.uuid4()),
-                    image_path=f"/static/{self.user_id}/{new_image_filename}",  # Update image_path
-                    clothes_mask=result['clothes_mask'],
-                    category=item['category'],
-                    subcategory=item['subcategory'],
-                    color=item['color'],
-                    attributes=attributes
-                )
-                new_items.append(clothes.to_dict())
-            
-            self.df = pd.concat([self.df, pd.DataFrame([new_items[0]])], ignore_index=True)
+            result = segment_and_categorize_image(image_path)
+
+            relative_image_path = os.path.relpath(result['image_path'], env.IMAGES_DIR)
+            relative_mask_path = os.path.relpath(result['mask_path'], env.IMAGES_DIR)
+            relative_masked_paths = [os.path.relpath(path, env.IMAGES_DIR) for path in result['masked_image_paths'] if path]
+            attributes = {
+                'pattern': result.get('pattern', 'unknown'),
+                'material': result.get('material', 'unknown'),
+                'style': result.get('style', 'unknown'),
+            }
+
+            image_hash = self._image_hash(image_path)
+
+            clothes = Clothes(
+                id=str(uuid.uuid4()),
+                image_path=relative_image_path,
+                clothes_mask=relative_mask_path,
+                masked_images=relative_masked_paths,
+                category=result.get('category', 'unknown'),
+                subcategory=result.get('subcategory', 'unknown'),
+                color=result.get('color', 'unknown'),
+                attributes=attributes,
+                image_hash=image_hash
+            )
+
+            new_item = clothes.to_dict()
+            self.df = pd.concat([self.df, pd.DataFrame([new_item])], ignore_index=True)
             self._save_df()
-            return new_items[0]
+            return new_item
+
         except Exception as e:
-            logger.error(f"Error in add_item: {str(e)}")
+            logger.error(f"Error in add_item: {str(e)}", exc_info=True)
             raise
 
     def delete_item(self, item_id: str) -> bool:
@@ -84,7 +107,7 @@ class Closet:
         if item.empty:
             return False
         
-        image_path = item['image_path'].values[0]
+        image_path = os.path.join(env.IMAGES_DIR, item['image_path'].values[0])
         if os.path.exists(image_path):
             os.remove(image_path)
         
@@ -111,7 +134,11 @@ class Closet:
         return key in attributes and attributes[key].get('type') == value
 
     def get_all_items(self) -> List[Clothes]:
-        return [Clothes.from_dict(row) for _, row in self.df.iterrows()]
+        items = []
+        for _, row in self.df.iterrows():
+            item = Clothes.from_dict(row)
+            items.append(item)
+        return items
 
     def _save_df(self) -> None:
         self.df.to_csv(self.csv_path, index=False)
@@ -176,7 +203,7 @@ class Closet:
 
 # Usage example
 if __name__ == "__main__":
-    closet = Closet("user123")
+    closet = Closet.create("user123")
     
     # Add an item
     closet.add_item("/path/to/uploaded/image.jpg")

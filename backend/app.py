@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI()
 
 # Serve static files from the "data/images" directory at the "/static" path using the custom LoggingStaticFiles class
-app.mount("/static", LoggingStaticFiles(directory="data/images"), name="static")
+app.mount("/static", LoggingStaticFiles(directory=env.IMAGES_DIR), name="static")
 
 app.add_middleware(
     CORSMiddleware,
