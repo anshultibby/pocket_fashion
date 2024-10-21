@@ -43,12 +43,11 @@ def segment_and_categorize_image(image_path: str) -> Dict[str, any]:
         classify_result = classify_image(image)
         logger.info(f"Classify result: {classify_result}")
         
-        # Use the stem of the file path as the key
         key = os.path.splitext(os.path.basename(masked_image_path))[0]
         
-        # Remove probability values from the classification results
+        # Take only the top classification per category
         classification_results[key] = {
-            label_type: [label for label, _ in results]
+            label_type: results[0][0] if results else None
             for label_type, results in classify_result.items()
         }
         masked_image_paths[key] = masked_image_path

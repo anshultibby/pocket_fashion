@@ -5,7 +5,8 @@ import shutil
 import os
 import uuid
 import logging
-from typing import List
+from typing import List, Dict
+from collections import Counter
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,7 @@ async def get_closet(current_user: User = Depends(get_current_user)):
         
         return {
             "message": "Closet retrieved successfully",
-            "items": [item.to_dict() for item in items]  # This will now return masked_images as a list
+            "items": [item.to_dict() for item in items],
         }
     except Exception as e:
         logger.error(f"Error retrieving closet for user {current_user.id}: {str(e)}")
@@ -98,3 +99,65 @@ async def delete_closet_item(item_id: str, current_user: User = Depends(get_curr
     except Exception as e:
         logger.error(f"Error deleting item: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+# New endpoint for retrieving closet items
+@router.get("/api/user/closet-items")
+async def get_closet_items(current_user: User = Depends(get_current_user)):
+    try:
+        logger.info(f"Fetching closet items for user: {current_user.id}")
+        closet = Closet(current_user.id)
+        items = closet.get_all_items()
+        logger.info(f"Retrieved {len(items)} items for user: {current_user.id}")
+        
+        closet_items = []
+
+        for item in items:
+            for mask_key, mask_path in item.masked_images.items():
+                closet_item = {
+                    "id": f"{item.id}-{mask_key}",
+                    "path": mask_path,
+                    "classification_results": item.classification_results[mask_key]
+                }
+                closet_items.append(closet_item)
+        
+        return {
+            "message": "Closet items retrieved successfully",
+            "items": closet_items
+        }
+    except Exception as e:
+        logger.error(f"Error retrieving closet items for user {current_user.id}: {str(e)}")
+        logger.exception("Detailed traceback:")
+        raise HTTPException(status_code=500, detail=f"Error retrieving closet items: {str(e)}")
+
+# New endpoint for retrieving categories and their counts
+@router.get("/api/user/closet-categories")
+async def get_closet_categories(current_user: User = Depends(get_current_user)):
+    try:
+        logger.info(f"Fetching closet categories for user: {current_user.id}")
+        closet = Closet(current_user.id)
+        items = closet.get_all_items()
+        
+        category_counter = Counter()
+
+        for item in items:
+            for classification in item.classification_results.values():
+                if 'category' in classification:
+                    category_counter[classification['category']] += 1
+        
+        categories = [
+            {"name": category, "count": count}
+            for category, count in category_counter.items()
+        ]
+        
+        sorted_categories = sorted(categories, key=lambda x: (-x['count'], x['name']))
+        
+        logger.info(f"Retrieved {len(sorted_categories)} categories for user: {current_user.id}")
+        
+        return {
+            "message": "Closet categories retrieved successfully",
+            "categories": sorted_categories
+        }
+    except Exception as e:
+        logger.error(f"Error retrieving closet categories for user {current_user.id}: {str(e)}")
+        logger.exception("Detailed traceback:")
+        raise HTTPException(status_code=500, detail=f"Error retrieving closet categories: {str(e)}")
