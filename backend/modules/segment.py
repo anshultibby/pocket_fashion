@@ -31,7 +31,7 @@ class ClothSegmenter:
         os.makedirs(self.save_dir, exist_ok=True)
         self.mask_path = os.path.join(self.save_dir, f'mask.png')
         self.original_image_path = os.path.join(self.save_dir, f'original.png')
-        self.masked_image_paths = [os.path.join(self.save_dir, f'masked_{cls}.png') for cls in range(1, 4)]
+        self.masked_image_paths = []
 
     def segment(self, image_path):
         self.create_save_dir(image_path)
@@ -60,6 +60,7 @@ class ClothSegmenter:
 
         classes_to_save = [cls for cls in range(1, 4) if np.any(self.output_arr == cls)]
 
+        self.masked_image_paths = []  # Reset the list
         for cls in classes_to_save:
             alpha_mask = (self.output_arr == cls).astype(np.uint8) * 255
             alpha_mask_img = Image.fromarray(alpha_mask, mode='L')
@@ -67,7 +68,10 @@ class ClothSegmenter:
             
             masked_image = Image.new('RGBA', self.image.size, (0, 0, 0, 0))
             masked_image.paste(self.image.convert('RGBA'), (0, 0), alpha_mask_img)
-            masked_image.save(self.masked_image_paths[cls - 1])
+            
+            masked_image_path = os.path.join(self.save_dir, f'masked_{cls}.png')
+            self.masked_image_paths.append(masked_image_path)
+            masked_image.save(masked_image_path)
 
         self.mask.save(self.mask_path)
         self.image.save(self.original_image_path)

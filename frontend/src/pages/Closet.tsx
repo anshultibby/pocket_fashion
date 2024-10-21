@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Box, Text, Button, VStack, useToast, SimpleGrid, Image } from '@chakra-ui/react';
+import { Box, Text, Button, VStack, useToast, SimpleGrid, Image, Flex } from '@chakra-ui/react';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { useDropzone } from 'react-dropzone';
@@ -115,26 +115,17 @@ const Closet: React.FC = () => {
         </Box>
 
         {closetItems.length > 0 ? (
-          <SimpleGrid columns={[1, 2, 3]} spacing={4}>
+          <VStack spacing={6} align="stretch">
             {closetItems.map((item) => (
-              <Box key={item.id} borderWidth={1} borderRadius="lg" overflow="hidden">
-                <VStack spacing={2} align="stretch">
+              <Box key={item.id} borderWidth={1} borderRadius="lg" overflow="hidden" p={4}>
+                <SimpleGrid columns={5} spacing={4} alignItems="center">
                   {item.image_path && (
                     <Image
                       src={getImageUrl(item.image_path)}
                       alt="Original Image"
-                      objectFit="cover"
-                      width="100%"
-                      height="200px"
-                    />
-                  )}
-                  {item.clothes_mask && (
-                    <Image
-                      src={getImageUrl(item.clothes_mask)}
-                      alt="Segmentation mask"
-                      objectFit="cover"
-                      width="100%"
-                      height="200px"
+                      objectFit="contain"
+                      maxH="200px"
+                      w="100%"
                     />
                   )}
                   {Array.isArray(item.masked_images) && item.masked_images.map((maskedPath, index) => (
@@ -142,18 +133,18 @@ const Closet: React.FC = () => {
                       key={index}
                       src={getImageUrl(maskedPath)}
                       alt={`Masked image ${index + 1}`}
-                      objectFit="cover"
-                      width="100%"
-                      height="200px"
+                      objectFit="contain"
+                      maxH="200px"
+                      w="100%"
                     />
                   ))}
-                  <Button onClick={() => deleteItem(item.id)} size="sm" colorScheme="red" m={2}>
+                  <Button onClick={() => deleteItem(item.id)} size="sm" colorScheme="red">
                     Delete
                   </Button>
-                </VStack>
+                </SimpleGrid>
               </Box>
             ))}
-          </SimpleGrid>
+          </VStack>
         ) : (
           <Text>Your closet is empty. Add some items!</Text>
         )}
