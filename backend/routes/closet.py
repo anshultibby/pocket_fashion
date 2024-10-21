@@ -14,15 +14,19 @@ router = APIRouter()
 @router.get("/api/user/closet")
 async def get_closet(current_user: User = Depends(get_current_user)):
     try:
+        logger.info(f"Fetching closet for user: {current_user.id}")
         closet = Closet(current_user.id)
         items = closet.get_all_items()
+        logger.info(f"Retrieved {len(items)} items for user: {current_user.id}")
+        
         return {
             "message": "Closet retrieved successfully",
             "items": [item.to_dict() for item in items]
         }
     except Exception as e:
-        logger.error(f"Error retrieving closet: {str(e)}")
-        raise HTTPException(status_code=500, detail="Error retrieving closet")
+        logger.error(f"Error retrieving closet for user {current_user.id}: {str(e)}")
+        logger.exception("Detailed traceback:")
+        raise HTTPException(status_code=500, detail=f"Error retrieving closet: {str(e)}")
 
 @router.post("/api/user/closet/items")
 async def add_closet_items(

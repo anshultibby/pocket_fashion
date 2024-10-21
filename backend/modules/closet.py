@@ -36,8 +36,8 @@ def segment_and_categorize_image(image_path: str) -> Dict[str, any]:
 class Closet:
     def __init__(self, user_id: str):
         self.user_id = user_id
-        self.csv_path = os.path.join(env.CLOSETS_DIR, f"{user_id}_closet.csv")
-        self.image_dir = os.path.join(env.IMAGES_DIR, user_id)
+        self.csv_path = f"data/closets/{user_id}_closet.csv"
+        self.image_dir = f"data/images/{user_id}"
         self.df = self._load_or_create_df()
 
     def _load_or_create_df(self) -> pd.DataFrame:
@@ -103,17 +103,41 @@ class Closet:
             raise
 
     def delete_item(self, item_id: str) -> bool:
-        item = self.df[self.df['id'] == item_id]
-        if item.empty:
+        try:
+            # Read the CSV file
+            df = pd.read_csv(self.csv_path)
+            
+            # Find the item
+            item = df[df['id'] == item_id]
+            if item.empty:
+                return False  # Item not found
+            
+            # Get the image paths
+            image_path = item['image_path'].values[0]
+            clothes_mask = item['clothes_mask'].values[0]
+            masked_images = item['masked_images'].values[0].split(',')
+            
+            # Remove the item from the DataFrame
+            df = df[df['id'] != item_id]
+            
+            # Save the updated DataFrame back to CSV
+            df.to_csv(self.csv_path, index=False)
+            
+            # Delete the image files
+            self._delete_file(image_path)
+            self._delete_file(clothes_mask)
+            for masked_image in masked_images:
+                self._delete_file(masked_image)
+            
+            return True
+        except Exception as e:
+            print(f"Error deleting item: {str(e)}")
             return False
-        
-        image_path = os.path.join(env.IMAGES_DIR, item['image_path'].values[0])
-        if os.path.exists(image_path):
-            os.remove(image_path)
-        
-        self.df = self.df[self.df['id'] != item_id]
-        self._save_df()
-        return True
+
+    def _delete_file(self, file_path: str):
+        full_path = os.path.join(self.image_dir, file_path)
+        if os.path.exists(full_path):
+            os.remove(full_path)
 
     def search_items(self, **kwargs) -> List[Clothes]:
         result_df = self.df.copy()
@@ -136,8 +160,17 @@ class Closet:
     def get_all_items(self) -> List[Clothes]:
         items = []
         for _, row in self.df.iterrows():
-            item = Clothes.from_dict(row)
-            items.append(item)
+            logger.info("Row data:")
+            for column, value in row.items():
+                logger.info(f"{column}: {type(value).__name__} = {value}")
+            
+            try:
+                item = Clothes.from_dict(row.to_dict())
+                items.append(item)
+            except Exception as e:
+                logger.error(f"Error creating Clothes object: {e}")
+                logger.error(f"Problematic row: {row.to_dict()}")
+
         return items
 
     def _save_df(self) -> None:
