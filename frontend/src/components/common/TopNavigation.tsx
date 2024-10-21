@@ -6,7 +6,7 @@ const TopNavigation = () => {
   return (
     <Flex as="nav" bg="blue.500" color="white" p={4} justifyContent="space-around">
       <Link as={RouterLink} to="/dashboard">Dashboard</Link>
-      <Link as={RouterLink} to="/closet">Closet</Link>
+      <Link as={RouterLink} to="/closet">Closet</Link> {/* This now links directly to MyCloset */}
       <Link as={RouterLink} to="/recommendations">Recommendations</Link>
       <Link as={RouterLink} to="/try-on">Virtual Try-On</Link>
       <Link as={RouterLink} to="/shopper">Personal Shopper</Link>
@@ -15,4 +15,3 @@ const TopNavigation = () => {
 };
 
 export default TopNavigation;
-

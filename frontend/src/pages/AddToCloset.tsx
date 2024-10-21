@@ -145,10 +145,10 @@ const AddToCloset: React.FC = () => {
       {uploadedFiles.length > 0 && (
         <VStack spacing={4}>
           <Text fontWeight="bold">Selected Files ({uploadedFiles.length})</Text>
-          <SimpleGrid columns={3} spacing={4}>
+          <SimpleGrid columns={[1, 2, 3]} spacing={4}>
             {uploadedFiles.map((file, index) => (
               <Box key={index} position="relative">
-                <Image src={file.preview} alt={file.name} borderRadius="md" />
+                <Image src={file.preview} alt={file.name} borderRadius="md" objectFit="cover" boxSize="200px" />
                 <IconButton
                   aria-label="Remove image"
                   icon={<CloseIcon />}

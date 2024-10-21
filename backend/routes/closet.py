@@ -28,6 +28,24 @@ async def get_closet(current_user: User = Depends(get_current_user)):
         logger.exception("Detailed traceback:")
         raise HTTPException(status_code=500, detail=f"Error retrieving closet: {str(e)}")
 
+@router.get("/api/user/closet/uploads")
+async def get_past_uploads(current_user: User = Depends(get_current_user)):
+    try:
+        logger.info(f"Fetching past uploads for user: {current_user.id}")
+        closet = Closet(current_user.id)
+        items = closet.get_all_items()
+        uploads = [{"id": item.id, "image_path": item.image_path} for item in items]
+        logger.info(f"Retrieved {len(uploads)} uploads for user: {current_user.id}")
+        
+        return {
+            "message": "Past uploads retrieved successfully",
+            "uploads": uploads
+        }
+    except Exception as e:
+        logger.error(f"Error retrieving past uploads for user {current_user.id}: {str(e)}")
+        logger.exception("Detailed traceback:")
+        raise HTTPException(status_code=500, detail=f"Error retrieving past uploads: {str(e)}")
+
 @router.post("/api/user/closet/items")
 async def add_closet_items(
     images: List[UploadFile] = File(...),

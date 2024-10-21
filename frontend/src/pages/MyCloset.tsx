@@ -1,12 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { Box, VStack, Heading, SimpleGrid, Image, Text, Spinner, useToast } from '@chakra-ui/react';
+import { Box, VStack, Heading, SimpleGrid, Image, Text, Spinner, useToast, Badge, HStack } from '@chakra-ui/react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 
+// Add this line to define your static endpoint
+const STATIC_BASE_URL = process.env.REACT_APP_STATIC_BASE_URL || 'http://localhost:8000/static/';
+
 interface ClosetItem {
   id: string;
-  image_path: string;
-  // Add other properties as needed
+  masked_images: string[];
+  category: string;
+  subcategory: string;
+  color: string;
+  attributes: {
+    pattern: string;
+    material: string;
+    style: string;
+  };
 }
 
 const MyCloset: React.FC = () => {
@@ -26,6 +36,7 @@ const MyCloset: React.FC = () => {
       setLoading(true);
       const response = await api.get('/api/user/closet');
       setClosetItems(response.data.items);
+      console.log("Fetched closet items:", response.data.items);
     } catch (error) {
       console.error('Failed to fetch closet items:', error);
       toast({
@@ -38,6 +49,13 @@ const MyCloset: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const getFullImageUrl = (path: string) => {
+    if (path.startsWith('http')) {
+      return path; // Return as is if it's already a full URL
+    }
+    return `${STATIC_BASE_URL}${path}`;
   };
 
   if (loading) {
@@ -55,10 +73,27 @@ const MyCloset: React.FC = () => {
       {closetItems.length === 0 ? (
         <Text>Your closet is empty. Add some items to get started!</Text>
       ) : (
-        <SimpleGrid columns={[2, 3, 4]} spacing={4}>
+        <SimpleGrid columns={[1, 2, 3]} spacing={4}>
           {closetItems.map((item) => (
-            <Box key={item.id} borderWidth={1} borderRadius="lg" overflow="hidden">
-              <Image src={item.image_path} alt={`Closet item ${item.id}`} />
+            <Box key={item.id} borderWidth={1} borderRadius="lg" overflow="hidden" p={2}>
+              {item.masked_images.length > 0 && (
+                <Image 
+                  src={getFullImageUrl(item.masked_images[0])} 
+                  alt={`Masked item ${item.id}`}
+                  objectFit="cover"
+                  boxSize="200px"
+                />
+              )}
+              <VStack align="start" mt={2} spacing={2}>
+                <HStack>
+                  <Badge colorScheme="blue">{item.category}</Badge>
+                  <Badge colorScheme="green">{item.subcategory}</Badge>
+                  <Badge colorScheme="red">{item.color}</Badge>
+                </HStack>
+                <Text fontSize="sm">Pattern: {item.attributes.pattern}</Text>
+                <Text fontSize="sm">Material: {item.attributes.material}</Text>
+                <Text fontSize="sm">Style: {item.attributes.style}</Text>
+              </VStack>
             </Box>
           ))}
         </SimpleGrid>
