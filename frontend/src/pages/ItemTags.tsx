@@ -87,7 +87,7 @@ const ItemTags: React.FC = () => {
   };
 
   const renderItemGrid = (categoryItems: ClosetItem[]) => (
-    <SimpleGrid columns={[2, 3, 4, 5]} spacing={4}>
+    <SimpleGrid columns={[3, 4, 5, 6]} spacing={2}>
       {categoryItems.map((item) => {
         const isExpanded = expandedItems.has(item.id);
         return (
@@ -99,47 +99,42 @@ const ItemTags: React.FC = () => {
             boxShadow="sm"
             bg="white"
           >
-            <Box position="relative" paddingBottom="100%"> {/* Creates a square aspect ratio */}
+            <Box position="relative" paddingBottom="100%">
               <Image
                 src={getFullImageUrl(item.path)}
                 alt={`${item.classification_results.category} item`}
                 objectFit="cover"
-                objectPosition="center 30%" // Shifts the focus slightly upwards
+                objectPosition="center"
                 position="absolute"
-                top="2%"
-                left="2%"
-                width="96%"
-                height="105%" // Extends beyond the bottom to crop more
+                top="0"
+                left="0"
+                width="100%"
+                height="100%"
               />
             </Box>
-            <Box p={3}>
-              <Flex justify="space-between" align="center" mb={2}>
-                <Text fontSize="md" fontWeight="semibold" color="gray.700">
-                  {item.classification_results.category}
-                </Text>
+            <Box p={2}>
+              <Flex justify="space-between" align="center" mb={1}>
                 <Tag size="sm" variant="solid" colorScheme="teal">
                   {item.classification_results.colour}
                 </Tag>
+                <Button
+                  size="xs"
+                  variant="ghost"
+                  onClick={() => toggleExpand(item.id)}
+                  rightIcon={isExpanded ? <ChevronUpIcon /> : <ChevronDownIcon />}
+                >
+                  {isExpanded ? "Less" : "More"}
+                </Button>
               </Flex>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => toggleExpand(item.id)}
-                rightIcon={isExpanded ? <ChevronUpIcon /> : <ChevronDownIcon />}
-                width="100%"
-                mt={1}
-              >
-                {isExpanded ? "Hide Details" : "Show Details"}
-              </Button>
               <Collapse in={isExpanded} animateOpacity>
-                <VStack spacing={2} align="stretch" mt={3}>
+                <VStack spacing={1} align="stretch" mt={2}>
                   {Object.entries(item.classification_results).map(([resultKey, value]) => (
                     resultKey !== 'category' && resultKey !== 'colour' && (
                       <Flex key={resultKey} justify="space-between" align="center">
-                        <Text fontSize="sm" fontWeight="medium" color="gray.600" textTransform="capitalize">
+                        <Text fontSize="xs" fontWeight="medium" color="gray.600" textTransform="capitalize">
                           {resultKey}:
                         </Text>
-                        <Text fontSize="sm" color="gray.800">
+                        <Text fontSize="xs" color="gray.800">
                           {value}
                         </Text>
                       </Flex>
@@ -166,18 +161,29 @@ const ItemTags: React.FC = () => {
   }
 
   return (
-    <Box maxW="100%" py={8}>
+    <Box maxW="100%" py={2}>
       <Tabs variant="soft-rounded" colorScheme="blue">
-        <TabList mb={4} overflowX="auto" whiteSpace="nowrap" pb={2}>
+        <TabList mb={2} overflowX="auto" whiteSpace="nowrap" pb={1} css={{
+          '&::-webkit-scrollbar': { display: 'none' },
+          scrollbarWidth: 'none',
+          '-ms-overflow-style': 'none',
+        }}>
           {categories.map((category) => (
-            <Tab key={category.name} mx={1} _selected={{ color: "white", bg: "blue.500" }}>
+            <Tab 
+              key={category.name} 
+              mx={1} 
+              _selected={{ color: "white", bg: "blue.500" }} 
+              fontSize="xs"
+              py={1}
+              px={2}
+            >
               {category.name} ({category.count})
             </Tab>
           ))}
         </TabList>
         <TabPanels>
           {categories.map((category) => (
-            <TabPanel key={category.name} px={0}>
+            <TabPanel key={category.name} px={0} py={2}>
               {renderItemGrid(closetItems.filter(item => 
                 item.classification_results.category === category.name
               ))}

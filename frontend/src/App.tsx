@@ -11,7 +11,6 @@ import OutfitRecommendation from './pages/OutfitRecommendation';
 import VirtualTryOn from './pages/VirtualTryOn';
 import PersonalShopper from './pages/PersonalShopper';
 
-import Header from './components/common/Header';
 import Footer from './components/common/Footer';
 import PrivateRoute from './components/common/PrivateRoute';
 import TopNavigation from './components/common/TopNavigation';
@@ -23,7 +22,6 @@ function App() {
   return (
     <Router>
       <Flex direction="column" minHeight="100vh">
-        <Header />
         {isAuthenticated && <TopNavigation />}
         <Flex flex={1}>
           <Box flex={1} bg="gray.50">
