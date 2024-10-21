@@ -15,6 +15,9 @@ from modules.segment import ClothSegmenter
 
 logger = logging.getLogger(__name__)
 cloth_segmenter = ClothSegmenter()
+CLOSET_COLUMNS = ['id', 'image_path', 'clothes_mask', 'masked_images', 
+'combined_mask_image_path', 'category', 'subcategory', 
+'color', 'attributes', 'image_hash']
 
 def segment_and_categorize_image(image_path: str) -> Dict[str, any]:
     cloth_segmenter.segment(image_path)
@@ -24,6 +27,7 @@ def segment_and_categorize_image(image_path: str) -> Dict[str, any]:
         'image_path': cloth_segmenter.original_image_path,
         'mask_path': cloth_segmenter.mask_path,
         'masked_image_paths': cloth_segmenter.masked_image_paths,
+        'combined_mask_image_path': cloth_segmenter.combined_mask_image_path,  # Add this line
         'category': 'unknown',
         'subcategory': 'unknown',
         'color': 'unknown',
@@ -46,6 +50,8 @@ class Closet:
             df = pd.read_csv(self.csv_path)
             if 'image_hash' not in df.columns:
                 df['image_hash'] = ''  # Add the column if it doesn't exist
+            if 'combined_mask_image' not in df.columns:
+                df['combined_mask_image'] = ''  # Add the new column if it doesn't exist
             
             # Handle masked_images as a string representation of a Python list
             def parse_masked_images(x):
@@ -60,7 +66,7 @@ class Closet:
             df['masked_images'] = df['masked_images'].apply(parse_masked_images)
             return df
         else:
-            df = pd.DataFrame(columns=['id', 'image_path', 'clothes_mask', 'masked_images', 'category', 'subcategory', 'color', 'attributes', 'image_hash'])
+            df = pd.DataFrame(columns=[CLOSET_COLUMNS])
             df.to_csv(self.csv_path, index=False)
             return df
 
@@ -86,6 +92,7 @@ class Closet:
             relative_image_path = os.path.relpath(result['image_path'], env.IMAGES_DIR)
             relative_mask_path = os.path.relpath(result['mask_path'], env.IMAGES_DIR)
             relative_masked_paths = [os.path.relpath(path, env.IMAGES_DIR) for path in result['masked_image_paths'] if path]
+            relative_combined_mask_path = os.path.relpath(result['combined_mask_image_path'], env.IMAGES_DIR)
             attributes = {
                 'pattern': result.get('pattern', 'unknown'),
                 'material': result.get('material', 'unknown'),
@@ -99,6 +106,7 @@ class Closet:
                 image_path=relative_image_path,
                 clothes_mask=relative_mask_path,
                 masked_images=relative_masked_paths,
+                combined_mask_image_path=relative_combined_mask_path,  # Use the correct field name
                 category=result.get('category', 'unknown'),
                 subcategory=result.get('subcategory', 'unknown'),
                 color=result.get('color', 'unknown'),
@@ -127,6 +135,7 @@ class Closet:
             image_path = item['image_path'].values[0]
             clothes_mask = item['clothes_mask'].values[0]
             masked_images = item['masked_images'].values[0]
+            combined_mask_image = item['combined_mask_image'].values[0]
             
             # Remove the item from the DataFrame
             self.df = self.df[self.df['id'] != item_id]
@@ -139,6 +148,7 @@ class Closet:
             self._delete_file(clothes_mask)
             for masked_image in masked_images:
                 self._delete_file(masked_image)
+            self._delete_file(combined_mask_image)
             
             logger.info(f"Successfully deleted item with id {item_id}")
             return True

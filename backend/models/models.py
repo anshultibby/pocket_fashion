@@ -15,6 +15,7 @@ class Clothes(BaseModel):
     id: str
     image_path: str
     clothes_mask: str
+    combined_mask_image_path: str = None
     masked_images: Optional[List[str]] = Field(default_factory=list)
     category: str = "unknown"
     subcategory: str = "unknown"
@@ -51,6 +52,7 @@ class Clothes(BaseModel):
             id=str(data.get('id', '')),
             image_path=str(data.get('image_path', '')),
             clothes_mask=str(data.get('clothes_mask', '')),
+            combined_mask_image_path=str(data.get('combined_mask_image_path', '')),
             masked_images=masked_images,
             category=str(data.get('category', 'unknown')),
             subcategory=str(data.get('subcategory', 'unknown')),
@@ -64,7 +66,8 @@ class Clothes(BaseModel):
             "id": self.id,
             "image_path": self.image_path,
             "clothes_mask": self.clothes_mask,
-            "masked_images": self.masked_images,  # Return as a list, not a JSON string
+            "combined_mask_image_path": self.combined_mask_image_path,
+            "masked_images": self.masked_images,
             "category": self.category,
             "subcategory": self.subcategory,
             "color": self.color,

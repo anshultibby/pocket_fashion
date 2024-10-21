@@ -28,6 +28,31 @@ def apply_mask(image, mask_path=None):
     return Image.fromarray(masked_image_array.astype('uint8'))
 
 
+def classify_image(image):
+    # Process the image
+    processed = processor(images=[image], padding='max_length', return_tensors="pt")
+    with torch.no_grad():
+        image_features = model.get_image_features(processed['pixel_values'], normalize=True)
+
+    text_probs = {}
+    for label_type, text_features in text_features_dict.items():
+        text_features = torch.from_numpy(text_features).to(image_features.device)
+        text_probs[label_type] = (100.0 * image_features @ text_features.T).softmax(dim=-1).squeeze(0)
+
+    results = {}
+    for label_type, probs in text_probs.items():
+        max_prob, max_index = torch.max(probs, dim=0)
+        max_prob_value = max_prob.item()
+        
+        results[label_type] = []
+        for i, (label_value, prob) in enumerate(zip(style_dict[label_type], probs)):
+            prob_value = prob.item()
+            if prob_value == max_prob_value or prob_value >= max_prob_value * RELATIVE_THRESHOLD:
+                results[label_type].append((label_value, prob_value))
+
+    return results
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--image_path", type=str, required=True)
@@ -42,29 +67,16 @@ def main():
     else:
         mask_path = None
 
-    # Load and process the image
+    # Load and mask the image
     image = Image.open(image_path)
     image = apply_mask(image, mask_path)
 
-    # Process the image
-    processed = processor(images=[image], padding='max_length', return_tensors="pt")
-    with torch.no_grad():
-        image_features = model.get_image_features(processed['pixel_values'], normalize=True)
+    results = classify_image(image)
 
-    text_probs = {}
-    for label_type, text_features in text_features_dict.items():
-        text_features = torch.from_numpy(text_features).to(image_features.device)
-        text_probs[label_type] = (100.0 * image_features @ text_features.T).softmax(dim=-1).squeeze(0)
-
-    for label_type, probs in text_probs.items():
-        max_prob, max_index = torch.max(probs, dim=0)
-        max_prob_value = max_prob.item()
-        
+    for label_type, results_list in results.items():
         print(f"\n{label_type.capitalize()}:")
-        for i, (label_value, prob) in enumerate(zip(style_dict[label_type], probs)):
-            prob_value = prob.item()
-            if prob_value == max_prob_value or prob_value >= max_prob_value * RELATIVE_THRESHOLD:
-                print(f"  {label_value}: {prob_value:.2f}%")
+        for label_value, prob_value in results_list:
+            print(f"  {label_value}: {prob_value:.2f}%")
 
 if __name__ == "__main__":
     main()

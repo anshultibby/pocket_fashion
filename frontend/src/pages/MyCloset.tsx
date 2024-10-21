@@ -12,6 +12,7 @@ interface ClosetItem {
   image_path: string;
   clothes_mask: string;
   masked_images: string[];
+  combined_mask_image_path: string;
 }
 
 const MyCloset: React.FC = () => {
@@ -126,8 +127,8 @@ const MyCloset: React.FC = () => {
               <HStack spacing={3} width="100%">
                 <Box width="50%" bg="gray.50" borderRadius="md">
                   <Image
-                    src={getFullImageUrl(item.image_path)}
-                    alt="Original Image"
+                    src={getFullImageUrl(item.combined_mask_image_path)}
+                    alt="Combined Mask Image"
                     objectFit="contain"
                     w="100%"
                     h="100px"

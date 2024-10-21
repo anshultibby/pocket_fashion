@@ -11,19 +11,27 @@ const ClosetSubmenu: React.FC = () => {
     <VStack align="stretch" width="200px" p={4} bg="gray.100">
       <Link
         as={RouterLink}
-        to="/closet/my"
-        fontWeight={isActive('/closet/my') ? 'bold' : 'normal'}
-        color={isActive('/closet/my') ? 'blue.500' : 'gray.700'}
-      >
-        Explore Closet
-      </Link>
-      <Link
-        as={RouterLink}
         to="/closet/add"
         fontWeight={isActive('/closet/add') ? 'bold' : 'normal'}
         color={isActive('/closet/add') ? 'blue.500' : 'gray.700'}
       >
-        Add to Closet
+        Upload photos
+      </Link>
+      <Link
+        as={RouterLink}
+        to="/closet/my"
+        fontWeight={isActive('/closet/overview') ? 'bold' : 'normal'}
+        color={isActive('/closet/overview') ? 'blue.500' : 'gray.700'}
+      >
+        My Closet
+      </Link>
+      <Link
+        as={RouterLink}
+        to="/closet/items"
+        fontWeight={isActive('/closet/items') ? 'bold' : 'normal'}
+        color={isActive('/closet/items') ? 'blue.500' : 'gray.700'}
+      >
+        Closet Items
       </Link>
       <Link
         as={RouterLink}
