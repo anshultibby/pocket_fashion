@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Image, Spinner, useToast } from '@chakra-ui/react';
+import { Box, Image, Spinner, useToast, Grid, VStack, HStack } from '@chakra-ui/react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 
@@ -8,6 +8,8 @@ const STATIC_BASE_URL = process.env.REACT_APP_STATIC_BASE_URL || 'http://localho
 
 interface ClosetItem {
   id: string;
+  image_path: string;
+  clothes_mask: string;
   masked_images: string[];
 }
 
@@ -54,21 +56,47 @@ const MyCloset: React.FC = () => {
   if (loading) return <Spinner />;
 
   return (
-    <Box display="grid" gridTemplateColumns="repeat(auto-fill, minmax(200px, 1fr))" gap={4}>
-      {closetItems.flatMap((item) =>
-        item.masked_images.map((imagePath, index) => (
-          <Box key={`${item.id}-${index}`} height="200px" bg="gray.100" borderRadius="md">
-            <Image
-              src={getFullImageUrl(imagePath)}
-              alt={`Item ${item.id} - Image ${index + 1}`}
-              objectFit="contain"
-              w="100%"
-              h="100%"
-            />
-          </Box>
-        ))
-      )}
-    </Box>
+    <Grid templateColumns="repeat(auto-fill, minmax(300px, 1fr))" gap={6}>
+      {closetItems.map((item) => (
+        <Box key={item.id} borderWidth="1px" borderRadius="lg" overflow="hidden" p={4}>
+          <VStack spacing={2}>
+            <Grid templateColumns="repeat(3, 1fr)" gap={2} width="100%">
+              {item.masked_images.map((maskedImage, index) => (
+                <Box key={`masked-${index}`} height="150px" bg="gray.100" borderRadius="md">
+                  <Image
+                    src={getFullImageUrl(maskedImage)}
+                    alt={`Masked Image ${index + 1}`}
+                    objectFit="contain"
+                    w="100%"
+                    h="100%"
+                  />
+                </Box>
+              ))}
+            </Grid>
+            <HStack spacing={2} width="100%">
+              <Box height="60px" width="50%" bg="gray.100" borderRadius="md">
+                <Image
+                  src={getFullImageUrl(item.image_path)}
+                  alt="Original Image"
+                  objectFit="contain"
+                  w="100%"
+                  h="100%"
+                />
+              </Box>
+              <Box height="60px" width="50%" bg="gray.100" borderRadius="md">
+                <Image
+                  src={getFullImageUrl(item.clothes_mask)}
+                  alt="Clothes Mask"
+                  objectFit="contain"
+                  w="100%"
+                  h="100%"
+                />
+              </Box>
+            </HStack>
+          </VStack>
+        </Box>
+      ))}
+    </Grid>
   );
 };
 
