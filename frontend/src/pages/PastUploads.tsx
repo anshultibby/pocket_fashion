@@ -48,21 +48,18 @@ const PastUploads: React.FC = () => {
   };
 
   return (
-    <Box>
-      <Heading mb={4}>Past Uploads</Heading>
-      <Box display="grid" gridTemplateColumns="repeat(auto-fill, minmax(200px, 1fr))" gap={4}>
-        {uploads.map((upload) => (
+    <Box display="grid" gridTemplateColumns="repeat(auto-fill, minmax(200px, 1fr))" gap={4}>
+      {uploads.map((upload) => (
+        <Box key={upload.id} height="200px" bg="gray.100" borderRadius="md">
           <Image
-            key={upload.id}
             src={getFullImageUrl(upload.image_path)}
             alt={`Upload ${upload.id}`}
-            objectFit="cover"
+            objectFit="contain"
             w="100%"
-            h="200px"
-            borderRadius="md"
+            h="100%"
           />
-        ))}
-      </Box>
+        </Box>
+      ))}
     </Box>
   );
 };

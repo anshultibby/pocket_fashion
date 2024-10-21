@@ -69,7 +69,6 @@ const MyCloset: React.FC = () => {
 
   return (
     <VStack spacing={6} align="stretch">
-      <Heading as="h2" size="lg">My Closet</Heading>
       {closetItems.length === 0 ? (
         <Text>Your closet is empty. Add some items to get started!</Text>
       ) : (
