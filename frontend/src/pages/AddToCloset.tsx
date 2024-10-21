@@ -1,8 +1,12 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Box, VStack, Text, Input, Button, InputProps, SimpleGrid, Image, Flex, IconButton } from '@chakra-ui/react';
-import { CloseIcon } from '@chakra-ui/icons';
-import { useDropzone, DropzoneInputProps } from 'react-dropzone';
-import axios from 'axios';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { Box, VStack, Text, Button, SimpleGrid, Image, Flex, IconButton, useToast, Input, HStack } from '@chakra-ui/react';
+import { CloseIcon, AddIcon } from '@chakra-ui/icons';
+import { useDropzone } from 'react-dropzone';
+import { useAuth } from '../context/AuthContext';
+import api from '../api/axios';
+
+// At the top of your file, after the imports
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000'; // Adjust this URL as needed
 
 interface FileWithPreview extends File {
   preview: string;
@@ -11,141 +15,174 @@ interface FileWithPreview extends File {
 const AddToCloset: React.FC = () => {
   const [uploadedFiles, setUploadedFiles] = useState<FileWithPreview[]>([]);
   const [uploading, setUploading] = useState(false);
+  const toast = useToast();
+  const { isAuthenticated } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
-    const filesWithPreviews = acceptedFiles.map(file => 
-      Object.assign(file, {
-        preview: URL.createObjectURL(file)
-      })
+    const filesWithPreview = acceptedFiles.map(file => 
+      Object.assign(file, { preview: URL.createObjectURL(file) })
     );
-    setUploadedFiles(prevFiles => [...prevFiles, ...filesWithPreviews]);
+    setUploadedFiles(prev => [...prev, ...filesWithPreview]);
   }, []);
 
-  const { getRootProps, getInputProps, isDragActive, open } = useDropzone({ 
-    onDrop, 
-    noClick: true,
-    multiple: true,
-    accept: {
-      'image/*': []
-    }
-  });
+  const { getRootProps, getInputProps } = useDropzone({ onDrop });
 
-  // Filter out incompatible props
-  const inputProps: InputProps = Object.fromEntries(
-    Object.entries(getInputProps()).filter(([key]) => 
-      !['size', 'accept', 'multiple'].includes(key)
-    )
-  ) as InputProps;
+  useEffect(() => {
+    // Clean up the file previews when the component unmounts
+    return () => {
+      uploadedFiles.forEach(file => URL.revokeObjectURL(file.preview));
+    };
+  }, [uploadedFiles]);
 
   const handleUpload = async () => {
-    if (uploadedFiles.length === 0) return;
+    if (!isAuthenticated) {
+      toast({
+        title: "Authentication Error",
+        description: "You must be logged in to upload items.",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    if (uploadedFiles.length === 0) {
+      toast({
+        title: "No Files",
+        description: "Please select files to upload.",
+        status: "warning",
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
 
     setUploading(true);
     const formData = new FormData();
-    uploadedFiles.forEach((file, index) => {
-      formData.append(`file${index}`, file);
+    uploadedFiles.forEach((file) => {
+      formData.append(`images`, file);
     });
 
     try {
-      const response = await axios.post('/api/upload', formData, {
+      const response = await api.post('/api/user/closet/items', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      console.log('Upload successful:', response.data);
-      // You might want to add some user feedback here
+      
+      if (response.data.added_items.length > 0) {
+        toast({
+          title: "Upload Successful",
+          description: `Successfully added ${response.data.added_items.length} item${response.data.added_items.length !== 1 ? 's' : ''} to closet`,
+          status: "success",
+          duration: 5000,
+          isClosable: true,
+        });
+      }
+      
+      if (response.data.failed_items.length > 0) {
+        toast({
+          title: "Upload Partially Failed",
+          description: `Failed to add ${response.data.failed_items.length} item${response.data.failed_items.length !== 1 ? 's' : ''} to closet`,
+          status: "warning",
+          duration: 5000,
+          isClosable: true,
+        });
+      }
+      
     } catch (error) {
       console.error('Upload failed:', error);
-      // You might want to add some error handling here
+      toast({
+        title: "Upload Failed",
+        description: "There was an error uploading your images. Please try again.",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
     } finally {
       setUploading(false);
       setUploadedFiles([]);
     }
   };
 
-  const removeFile = (index: number) => {
-    setUploadedFiles(prevFiles => prevFiles.filter((_, i) => i !== index));
+  const handleRemoveFile = (index: number) => {
+    setUploadedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const cancelAll = () => {
+  const handleOpenFileDialog = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleCancelUpload = () => {
     setUploadedFiles([]);
   };
 
-  // Clean up object URLs to avoid memory leaks
-  useEffect(() => {
-    return () => uploadedFiles.forEach(file => URL.revokeObjectURL(file.preview));
-  }, [uploadedFiles]);
-
   return (
-    <Box>
-      <VStack spacing={4} align="stretch">
-        <Box
-          {...getRootProps()}
-          borderWidth={2}
-          borderStyle="dashed"
-          borderRadius="md"
-          p={4}
-          textAlign="center"
-        >
-          <Input {...inputProps} />
-          {isDragActive ? (
-            <Text>Drop the images here ...</Text>
-          ) : (
-            <Button onClick={open}>Select Images</Button>
-          )}
-        </Box>
-        {uploadedFiles.length > 0 && (
-          <SimpleGrid columns={[2, 3, 4]} spacing={1}>
+    <VStack spacing={6} align="stretch">
+      <Box 
+        {...getRootProps()} 
+        p={6} 
+        border="2px dashed" 
+        borderColor="gray.300" 
+        borderRadius="md"
+        textAlign="center"
+        cursor="pointer"
+      >
+        <input {...getInputProps()} />
+        <AddIcon boxSize={8} color="gray.500" />
+        <Text mt={2}>Click or drag files to upload</Text>
+      </Box>
+      
+      <Input
+        type="file"
+        multiple
+        onChange={(e) => onDrop(Array.from(e.target.files || []))}
+        hidden
+        ref={fileInputRef}
+      />
+
+      {uploadedFiles.length > 0 && (
+        <VStack spacing={4}>
+          <Text fontWeight="bold">Selected Files ({uploadedFiles.length})</Text>
+          <SimpleGrid columns={3} spacing={4}>
             {uploadedFiles.map((file, index) => (
-              <Box key={index} position="relative" width="100%" paddingBottom="100%">
-                <Box position="absolute" top={0} left={0} right={0} bottom={0}>
-                  <Image 
-                    src={file.preview} 
-                    alt={file.name} 
-                    objectFit="contain"
-                    width="100%"
-                    height="100%"
-                  />
-                  <IconButton
-                    aria-label="Remove image"
-                    icon={<CloseIcon boxSize={3} />}
-                    size="xs"
-                    position="absolute"
-                    top={0}
-                    right={0}
-                    onClick={() => removeFile(index)}
-                    zIndex={1}
-                    bg="rgba(0, 0, 0, 0.5)"
-                    color="white"
-                    _hover={{ bg: "rgba(0, 0, 0, 0.7)" }}
-                    minWidth="20px"
-                    height="20px"
-                    padding={0}
-                  />
-                </Box>
+              <Box key={index} position="relative">
+                <Image src={file.preview} alt={file.name} borderRadius="md" />
+                <IconButton
+                  aria-label="Remove image"
+                  icon={<CloseIcon />}
+                  size="sm"
+                  position="absolute"
+                  top={1}
+                  right={1}
+                  onClick={() => handleRemoveFile(index)}
+                />
               </Box>
             ))}
           </SimpleGrid>
-        )}
-        <Flex justifyContent="space-between">
-          <Button
-            onClick={handleUpload}
-            isLoading={uploading}
-            loadingText="Uploading..."
-            isDisabled={uploadedFiles.length === 0}
-            colorScheme="blue"
-          >
-            Upload {uploadedFiles.length} image{uploadedFiles.length !== 1 ? 's' : ''}
-          </Button>
-          <Button
-            onClick={cancelAll}
-            isDisabled={uploadedFiles.length === 0}
-            variant="outline"
-            colorScheme="red"
-          >
-            Cancel All
-          </Button>
-        </Flex>
-      </VStack>
-    </Box>
+          <HStack spacing={4} width="100%">
+            <Button 
+              onClick={handleCancelUpload} 
+              colorScheme="red" 
+              variant="outline" 
+              flex={1}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleUpload} 
+              isLoading={uploading} 
+              loadingText="Uploading..." 
+              colorScheme="blue" 
+              flex={1}
+            >
+              Upload to Closet
+            </Button>
+          </HStack>
+        </VStack>
+      )}
+    </VStack>
   );
 };
 
