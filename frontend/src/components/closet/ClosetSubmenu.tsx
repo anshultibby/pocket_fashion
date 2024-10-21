@@ -31,7 +31,7 @@ const ClosetSubmenu: React.FC = () => {
         fontWeight={isActive('/closet/items') ? 'bold' : 'normal'}
         color={isActive('/closet/items') ? 'blue.500' : 'gray.700'}
       >
-        Closet Items
+        Closet Item Details
       </Link>
       <Link
         as={RouterLink}

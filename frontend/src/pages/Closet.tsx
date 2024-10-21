@@ -4,6 +4,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import AddToCloset from './AddToCloset';
 import MyCloset from './MyCloset';
 import PastUploads from './PastUploads';
+import ClosetItemDetails from './ClosetItemDetails';
 
 const Closet: React.FC = () => {
   return (
@@ -13,6 +14,7 @@ const Closet: React.FC = () => {
           <Route path="my" element={<MyCloset />} />
           <Route path="add" element={<AddToCloset />} />
           <Route path="past-uploads" element={<PastUploads />} />
+          <Route path="items" element={<ClosetItemDetails />} />
           <Route path="/" element={<MyCloset />} />
           <Route path="*" element={<Navigate to="/closet" replace />} />
         </Routes>
