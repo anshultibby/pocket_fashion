@@ -18,8 +18,7 @@ from modules.classify import classify_image
 logger = logging.getLogger(__name__)
 cloth_segmenter = ClothSegmenter()
 CLOSET_COLUMNS = ['id', 'image_path', 'clothes_mask', 'masked_images', 
-'combined_mask_image_path', 'category', 'subcategory', 
-'color', 'attributes', 'image_hash']
+'combined_mask_image_path', 'classification_results', 'image_hash']
 
 def segment_image(image_path: str) -> Dict[str, any]:
     cloth_segmenter.segment(image_path)
@@ -35,26 +34,33 @@ def segment_image(image_path: str) -> Dict[str, any]:
 
 def segment_and_categorize_image(image_path: str) -> Dict[str, any]:
     segment_result = segment_image(image_path)
-    # classify each masked image
+    classification_results = {}
+    masked_image_paths = {}
+
     for masked_image_path in segment_result['masked_image_paths']:
         logger.info(f"Classifying image: {masked_image_path}")
         image = Image.open(masked_image_path)
         classify_result = classify_image(image)
         logger.info(f"Classify result: {classify_result}")
+        
+        # Use the stem of the file path as the key
+        key = os.path.splitext(os.path.basename(masked_image_path))[0]
+        
+        # Remove probability values from the classification results
+        classification_results[key] = {
+            label_type: [label for label, _ in results]
+            for label_type, results in classify_result.items()
+        }
+        masked_image_paths[key] = masked_image_path
 
     result = {
         'image_path': segment_result['image_path'],
         'mask_path': segment_result['mask_path'],
-        'masked_image_paths': segment_result['masked_image_paths'],
-        'combined_mask_image_path': segment_result['combined_mask_image_path'],  # Add this line
-        'category': 'unknown',
-        'subcategory': 'unknown',
-        'color': 'unknown',
-        'pattern': 'unknown',
-        'material': 'unknown',
-        'style': 'unknown'
+        'masked_image_paths': masked_image_paths,
+        'combined_mask_image_path': segment_result['combined_mask_image_path'],
+        'classification_results': classification_results
     }
-    logger.info(f"Segmentation result: {result}")
+    logger.info(f"Segmentation and classification result: {result}")
     return result
 
 class Closet:
@@ -68,26 +74,29 @@ class Closet:
         if os.path.exists(self.csv_path):
             df = pd.read_csv(self.csv_path)
             if 'image_hash' not in df.columns:
-                df['image_hash'] = ''  # Add the column if it doesn't exist
-            if 'combined_mask_image' not in df.columns:
-                df['combined_mask_image'] = ''  # Add the new column if it doesn't exist
+                df['image_hash'] = ''
+            if 'combined_mask_image_path' not in df.columns:
+                df['combined_mask_image_path'] = ''
             
-            # Handle masked_images as a string representation of a Python list
-            def parse_masked_images(x):
-                if isinstance(x, str):
-                    try:
-                        return ast.literal_eval(x)
-                    except (ValueError, SyntaxError):
-                        # If parsing fails, return an empty list
-                        return []
-                return x if isinstance(x, list) else []
-
-            df['masked_images'] = df['masked_images'].apply(parse_masked_images)
+            # Parse masked_images and classification_results as dictionaries
+            df['masked_images'] = df['masked_images'].apply(self._parse_dict)
+            df['classification_results'] = df['classification_results'].apply(self._parse_dict)
             return df
         else:
-            df = pd.DataFrame(columns=[CLOSET_COLUMNS])
+            df = pd.DataFrame(columns=CLOSET_COLUMNS)
             df.to_csv(self.csv_path, index=False)
             return df
+
+    def _parse_dict(self, x):
+        if isinstance(x, str):
+            try:
+                return ast.literal_eval(x)
+            except (ValueError, SyntaxError):
+                try:
+                    return json.loads(x)
+                except json.JSONDecodeError:
+                    return {}
+        return x if isinstance(x, dict) else {}
 
     def _image_hash(self, image_path: str) -> str:
         return str(imagehash.average_hash(Image.open(image_path)))
@@ -110,12 +119,12 @@ class Closet:
 
             relative_image_path = os.path.relpath(result['image_path'], env.IMAGES_DIR)
             relative_mask_path = os.path.relpath(result['mask_path'], env.IMAGES_DIR)
-            relative_masked_paths = [os.path.relpath(path, env.IMAGES_DIR) for path in result['masked_image_paths'] if path]
             relative_combined_mask_path = os.path.relpath(result['combined_mask_image_path'], env.IMAGES_DIR)
-            attributes = {
-                'pattern': result.get('pattern', 'unknown'),
-                'material': result.get('material', 'unknown'),
-                'style': result.get('style', 'unknown'),
+
+            # Create a new dictionary with relative paths, keeping the same keys
+            relative_masked_paths = {
+                key: os.path.relpath(path, env.IMAGES_DIR)
+                for key, path in result['masked_image_paths'].items()
             }
 
             image_hash = self._image_hash(image_path)
@@ -125,12 +134,9 @@ class Closet:
                 image_path=relative_image_path,
                 clothes_mask=relative_mask_path,
                 masked_images=relative_masked_paths,
-                combined_mask_image_path=relative_combined_mask_path,  # Use the correct field name
-                category=result.get('category', 'unknown'),
-                subcategory=result.get('subcategory', 'unknown'),
-                color=result.get('color', 'unknown'),
-                attributes=attributes,
-                image_hash=image_hash
+                combined_mask_image_path=relative_combined_mask_path,
+                image_hash=image_hash,
+                classification_results=result['classification_results']
             )
 
             new_item = clothes.to_dict()
@@ -206,20 +212,22 @@ class Closet:
         items = []
         for _, row in self.df.iterrows():
             try:
-                item = Clothes.from_dict(row.to_dict())
+                item_dict = row.to_dict()
+                item_dict['masked_images'] = self._parse_dict(item_dict['masked_images'])
+                item_dict['classification_results'] = self._parse_dict(item_dict['classification_results'])
+                item = Clothes.from_dict(item_dict)
                 items.append(item)
             except Exception as e:
                 logger.error(f"Error creating Clothes object: {e}")
                 logger.error(f"Problematic row: {row.to_dict()}")
-
         return items
 
     def _save_df(self) -> None:
-        # Convert masked_images to string representation of Python list before saving
-        self.df['masked_images'] = self.df['masked_images'].apply(lambda x: str(x) if isinstance(x, list) else '[]')
-        self.df.to_csv(self.csv_path, index=False)
-        # Convert back to list after saving
-        self.df['masked_images'] = self.df['masked_images'].apply(ast.literal_eval)
+        # Convert masked_images and classification_results to string representation of dictionaries before saving
+        df_to_save = self.df.copy()
+        df_to_save['masked_images'] = df_to_save['masked_images'].apply(str)
+        df_to_save['classification_results'] = df_to_save['classification_results'].apply(str)
+        df_to_save.to_csv(self.csv_path, index=False)
 
     def get_closet_stats(self, include_distribution: bool = False) -> Dict[str, Any]:
         stats = {

@@ -11,7 +11,9 @@ interface ClosetItem {
   id: string;
   image_path: string;
   clothes_mask: string;
-  masked_images: string[];
+  masked_images: {
+    [key: string]: string;
+  };
   combined_mask_image_path: string;
 }
 
@@ -112,11 +114,11 @@ const MyCloset: React.FC = () => {
             />
             <VStack spacing={4}>
               <Grid templateColumns="repeat(3, 1fr)" gap={3} width="100%">
-                {item.masked_images.map((maskedImage, index) => (
-                  <Box key={`masked-${index}`} bg="gray.50" borderRadius="md">
+                {Object.entries(item.masked_images).map(([key, maskedImage]) => (
+                  <Box key={`masked-${key}`} bg="gray.50" borderRadius="md">
                     <Image
                       src={getFullImageUrl(maskedImage)}
-                      alt={`Masked Image ${index + 1}`}
+                      alt={`Masked Image ${key}`}
                       objectFit="contain"
                       w="100%"
                       h="180px"

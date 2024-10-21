@@ -15,51 +15,29 @@ class Clothes(BaseModel):
     id: str
     image_path: str
     clothes_mask: str
-    combined_mask_image_path: str = None
-    masked_images: Optional[List[str]] = Field(default_factory=list)
-    category: str = "unknown"
-    subcategory: str = "unknown"
-    color: str = "unknown"
-    attributes: Optional[Dict[str, str]] = Field(default_factory=dict)
+    combined_mask_image_path: Optional[str] = None
+    masked_images: Dict[str, str] = Field(default_factory=dict)
     image_hash: str
+    classification_results: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'Clothes':
-        # Convert masked_images from string to list if necessary
-        masked_images = data.get('masked_images', [])
-        if isinstance(masked_images, str):
-            try:
-                # First, try to parse as JSON
-                masked_images = json.loads(masked_images)
-            except json.JSONDecodeError:
-                try:
-                    # If that fails, try to parse as a Python literal
-                    masked_images = ast.literal_eval(masked_images)
-                except (ValueError, SyntaxError):
-                    # If all else fails, split by comma
-                    masked_images = [path.strip() for path in masked_images.split(',') if
-                                      path.strip()]
-        
-        # Convert attributes from string to dict if necessary
-        attributes = data.get('attributes', {})
-        if isinstance(attributes, str):
-            try:
-                attributes = json.loads(attributes)
-            except json.JSONDecodeError:
-                attributes = {}
+        # Ensure masked_images and classification_results are dictionaries
+        data['masked_images'] = cls._ensure_dict(data.get('masked_images', {}))
+        data['classification_results'] = cls._ensure_dict(data.get('classification_results', {}))
+        return cls(**data)
 
-        return cls(
-            id=str(data.get('id', '')),
-            image_path=str(data.get('image_path', '')),
-            clothes_mask=str(data.get('clothes_mask', '')),
-            combined_mask_image_path=str(data.get('combined_mask_image_path', '')),
-            masked_images=masked_images,
-            category=str(data.get('category', 'unknown')),
-            subcategory=str(data.get('subcategory', 'unknown')),
-            color=str(data.get('color', 'unknown')),
-            attributes=attributes,
-            image_hash=str(data.get('image_hash', ''))
-        )
+    @staticmethod
+    def _ensure_dict(value):
+        if isinstance(value, str):
+            try:
+                return ast.literal_eval(value)
+            except (ValueError, SyntaxError):
+                try:
+                    return json.loads(value)
+                except json.JSONDecodeError:
+                    return {}
+        return value if isinstance(value, dict) else {}
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -68,9 +46,6 @@ class Clothes(BaseModel):
             "clothes_mask": self.clothes_mask,
             "combined_mask_image_path": self.combined_mask_image_path,
             "masked_images": self.masked_images,
-            "category": self.category,
-            "subcategory": self.subcategory,
-            "color": self.color,
-            "attributes": self.attributes,
-            "image_hash": self.image_hash
+            "image_hash": self.image_hash,
+            "classification_results": self.classification_results
         }
