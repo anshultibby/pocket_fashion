@@ -98,72 +98,44 @@ const ItemTags: React.FC = () => {
   };
 
   const renderItemGrid = (categoryItems: ClosetItem[]) => (
-    <SimpleGrid columns={[2, 3, 4, 5]} spacing={4} p={4}>
-      {categoryItems.map((item) => {
-        const isExpanded = expandedItems.has(item.id);
-        return (
-          <Box 
-            key={item.id} 
-            borderWidth={1} 
-            borderRadius="lg" 
-            overflow="hidden" 
-            boxShadow="md"
-            bg="white"
-            _hover={{ boxShadow: "xl", transform: "scale(1.02)" }}
-            transition="all 0.2s"
-          >
-            <Box position="relative" paddingBottom="100%">
-              {!imageLoaded[item.id] && (
-                <Skeleton height="100%" width="100%" position="absolute" top="0" left="0" />
-              )}
-              <Image
-                src={getFullImageUrl(item.path)}
-                alt={`${item.classification_results.category} item`}
-                objectFit="cover"
-                objectPosition="center"
-                position="absolute"
-                top="0"
-                left="0"
-                width="100%"
-                height="100%"
-                onLoad={() => handleImageLoad(item.id)}
-                display={imageLoaded[item.id] ? 'block' : 'none'}
-              />
-            </Box>
-            <Box p={2}>
-              <Flex justify="space-between" align="center" mb={1}>
-                <Tag size="sm" variant="solid" colorScheme="teal">
-                  {item.classification_results.colour}
-                </Tag>
-                <Button
-                  size="xs"
-                  variant="ghost"
-                  onClick={() => toggleExpand(item.id)}
-                  rightIcon={isExpanded ? <ChevronUpIcon /> : <ChevronDownIcon />}
-                >
-                  {isExpanded ? "Less" : "More"}
-                </Button>
-              </Flex>
-              <Collapse in={isExpanded} animateOpacity>
-                <VStack spacing={1} align="stretch" mt={2}>
-                  {Object.entries(item.classification_results).map(([resultKey, value]) => (
-                    resultKey !== 'category' && resultKey !== 'colour' && (
-                      <Flex key={resultKey} justify="space-between" align="center">
-                        <Text fontSize="xs" fontWeight="medium" color="gray.600" textTransform="capitalize">
-                          {resultKey}:
-                        </Text>
-                        <Text fontSize="xs" color="gray.800">
-                          {value}
-                        </Text>
-                      </Flex>
-                    )
-                  ))}
-                </VStack>
-              </Collapse>
-            </Box>
+    <SimpleGrid
+      columns={[1, 2, 3, 4]}  // Adjusted for better responsiveness
+      spacing={4}
+      p={4}
+      maxW="90%"  // Reduced max width to crop sides
+      mx="auto"
+    >
+      {categoryItems.map((item) => (
+        <Box 
+          key={item.id} 
+          borderWidth={1} 
+          borderRadius="lg" 
+          overflow="hidden" 
+          boxShadow="md"
+          bg="white"
+          _hover={{ boxShadow: "xl", transform: "scale(1.02)" }}
+          transition="all 0.2s"
+        >
+          <Box position="relative" paddingBottom="100%">
+            {!imageLoaded[item.id] && (
+              <Skeleton height="100%" width="100%" position="absolute" top="0" left="0" />
+            )}
+            <Image
+              src={getFullImageUrl(item.path)}
+              alt={`${item.classification_results.category} item`}
+              objectFit="cover"
+              objectPosition="center"
+              position="absolute"
+              top="0"
+              left="0"
+              width="100%"
+              height="100%"
+              onLoad={() => handleImageLoad(item.id)}
+              display={imageLoaded[item.id] ? 'block' : 'none'}
+            />
           </Box>
-        );
-      })}
+        </Box>
+      ))}
     </SimpleGrid>
   );
 
@@ -189,11 +161,14 @@ const ItemTags: React.FC = () => {
   return (
     <Box maxW="100%" py={2}>
       <Tabs variant="soft-rounded" colorScheme="blue">
-        <TabList mb={2} overflowX="auto" whiteSpace="nowrap" pb={1} css={{
-          '&::-webkit-scrollbar': { display: 'none' },
-          scrollbarWidth: 'none',
-          '-ms-overflow-style': 'none',
-        }}>
+        <TabList
+          mb={2}
+          pb={1}
+          maxW="100%"
+          display="flex"
+          flexWrap="wrap"  // Allow wrapping into multiple lines
+          justifyContent="flex-start"  // Align items to the start
+        >
           {categories.map((category) => (
             <Tab 
               key={category.name} 
@@ -202,6 +177,7 @@ const ItemTags: React.FC = () => {
               fontSize="sm"
               py={1}
               px={3}
+              flexShrink={0}
             >
               {category.name} ({category.count})
             </Tab>
