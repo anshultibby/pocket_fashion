@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Box, Image, Spinner, useToast, Grid, VStack, HStack } from '@chakra-ui/react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Box, Image, Spinner, useToast, Grid, VStack, HStack, IconButton, useDisclosure, AlertDialog, AlertDialogOverlay, AlertDialogContent, AlertDialogHeader, AlertDialogBody, AlertDialogFooter, Button } from '@chakra-ui/react';
+import { DeleteIcon } from '@chakra-ui/icons';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 
@@ -18,6 +19,9 @@ const MyCloset: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const { isAuthenticated } = useAuth();
   const toast = useToast();
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const fetchClosetItems = async () => {
@@ -53,50 +57,124 @@ const MyCloset: React.FC = () => {
     return `${STATIC_BASE_URL}${path}`;
   };
 
+  const handleDelete = (id: string) => {
+    setDeleteId(id);
+    onOpen();
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteId) return;
+
+    try {
+      await api.delete(`/api/user/closet/item/${deleteId}`);
+      setClosetItems(closetItems.filter(item => item.id !== deleteId));
+      toast({
+        title: "Success",
+        description: "Item deleted successfully.",
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
+    } catch (error) {
+      console.error('Error deleting item:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete item. Please try again.",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      onClose();
+      setDeleteId(null);
+    }
+  };
+
   if (loading) return <Spinner />;
 
   return (
-    <Grid templateColumns="repeat(auto-fill, minmax(300px, 1fr))" gap={6}>
-      {closetItems.map((item) => (
-        <Box key={item.id} borderWidth="1px" borderRadius="lg" overflow="hidden" p={4} boxShadow="md">
-          <VStack spacing={4}>
-            <Grid templateColumns="repeat(3, 1fr)" gap={3} width="100%">
-              {item.masked_images.map((maskedImage, index) => (
-                <Box key={`masked-${index}`} height="150px" bg="gray.50" borderRadius="md">
+    <>
+      <Grid templateColumns="repeat(auto-fill, minmax(300px, 1fr))" gap={6}>
+        {closetItems.map((item) => (
+          <Box key={item.id} borderWidth="1px" borderRadius="lg" overflow="hidden" p={4} boxShadow="md" position="relative">
+            <IconButton
+              aria-label="Delete item"
+              icon={<DeleteIcon />}
+              size="sm"
+              position="absolute"
+              top={2}
+              right={2}
+              onClick={() => handleDelete(item.id)}
+              colorScheme="red"
+              opacity={0.7}
+              _hover={{ opacity: 1 }}
+            />
+            <VStack spacing={4}>
+              <Grid templateColumns="repeat(3, 1fr)" gap={3} width="100%">
+                {item.masked_images.map((maskedImage, index) => (
+                  <Box key={`masked-${index}`} bg="gray.50" borderRadius="md">
+                    <Image
+                      src={getFullImageUrl(maskedImage)}
+                      alt={`Masked Image ${index + 1}`}
+                      objectFit="contain"
+                      w="100%"
+                      h="180px"
+                    />
+                  </Box>
+                ))}
+              </Grid>
+              <HStack spacing={3} width="100%">
+                <Box width="50%" bg="gray.50" borderRadius="md">
                   <Image
-                    src={getFullImageUrl(maskedImage)}
-                    alt={`Masked Image ${index + 1}`}
-                    objectFit="cover"
+                    src={getFullImageUrl(item.image_path)}
+                    alt="Original Image"
+                    objectFit="contain"
                     w="100%"
-                    h="100%"
+                    h="100px"
                   />
                 </Box>
-              ))}
-            </Grid>
-            <HStack spacing={3} width="100%">
-              <Box height="80px" width="50%" bg="gray.50" borderRadius="md">
-                <Image
-                  src={getFullImageUrl(item.image_path)}
-                  alt="Original Image"
-                  objectFit="cover"
-                  w="100%"
-                  h="100%"
-                />
-              </Box>
-              <Box height="80px" width="50%" bg="gray.50" borderRadius="md">
-                <Image
-                  src={getFullImageUrl(item.clothes_mask)}
-                  alt="Clothes Mask"
-                  objectFit="cover"
-                  w="100%"
-                  h="100%"
-                />
-              </Box>
-            </HStack>
-          </VStack>
-        </Box>
-      ))}
-    </Grid>
+                <Box width="50%" bg="gray.50" borderRadius="md">
+                  <Image
+                    src={getFullImageUrl(item.clothes_mask)}
+                    alt="Clothes Mask"
+                    objectFit="contain"
+                    w="100%"
+                    h="100px"
+                  />
+                </Box>
+              </HStack>
+            </VStack>
+          </Box>
+        ))}
+      </Grid>
+
+      <AlertDialog
+        isOpen={isOpen}
+        leastDestructiveRef={cancelRef}
+        onClose={onClose}
+      >
+        <AlertDialogOverlay>
+          <AlertDialogContent>
+            <AlertDialogHeader fontSize="lg" fontWeight="bold">
+              Delete Item
+            </AlertDialogHeader>
+
+            <AlertDialogBody>
+              Are you sure you want to delete this item? This action cannot be undone.
+            </AlertDialogBody>
+
+            <AlertDialogFooter>
+              <Button ref={cancelRef} onClick={onClose}>
+                Cancel
+              </Button>
+              <Button colorScheme="red" onClick={confirmDelete} ml={3}>
+                Delete
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialogOverlay>
+      </AlertDialog>
+    </>
   );
 };
 
