@@ -1,8 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Text, SimpleGrid, Spinner, useToast, Image, Flex, Tag, Button, Collapse, VStack, Tabs, TabList, TabPanels, Tab, TabPanel } from '@chakra-ui/react';
+import {
+  Box, Text, SimpleGrid, Spinner, useToast, Image,
+  Flex, Tag, Button, Collapse, VStack, Tabs,
+  TabList, TabPanels, Tab, TabPanel, Skeleton
+} from '@chakra-ui/react';
 import { ChevronDownIcon, ChevronUpIcon } from '@chakra-ui/icons';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
+import { useNavigate } from 'react-router-dom';
 
 const STATIC_BASE_URL = process.env.REACT_APP_STATIC_BASE_URL || 'http://localhost:8000/static/';
 
@@ -34,6 +39,8 @@ const ItemTags: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const { isAuthenticated } = useAuth();
   const toast = useToast();
+  const navigate = useNavigate();
+  const [imageLoaded, setImageLoaded] = useState<{ [key: string]: boolean }>({});
 
   useEffect(() => {
     const fetchData = async () => {
@@ -86,8 +93,12 @@ const ItemTags: React.FC = () => {
     });
   };
 
+  const handleImageLoad = (id: string) => {
+    setImageLoaded(prev => ({ ...prev, [id]: true }));
+  };
+
   const renderItemGrid = (categoryItems: ClosetItem[]) => (
-    <SimpleGrid columns={[3, 4, 5, 6]} spacing={2}>
+    <SimpleGrid columns={[2, 3, 4, 5]} spacing={4} p={4}>
       {categoryItems.map((item) => {
         const isExpanded = expandedItems.has(item.id);
         return (
@@ -96,10 +107,15 @@ const ItemTags: React.FC = () => {
             borderWidth={1} 
             borderRadius="lg" 
             overflow="hidden" 
-            boxShadow="sm"
+            boxShadow="md"
             bg="white"
+            _hover={{ boxShadow: "xl", transform: "scale(1.02)" }}
+            transition="all 0.2s"
           >
             <Box position="relative" paddingBottom="100%">
+              {!imageLoaded[item.id] && (
+                <Skeleton height="100%" width="100%" position="absolute" top="0" left="0" />
+              )}
               <Image
                 src={getFullImageUrl(item.path)}
                 alt={`${item.classification_results.category} item`}
@@ -110,6 +126,8 @@ const ItemTags: React.FC = () => {
                 left="0"
                 width="100%"
                 height="100%"
+                onLoad={() => handleImageLoad(item.id)}
+                display={imageLoaded[item.id] ? 'block' : 'none'}
               />
             </Box>
             <Box p={2}>
@@ -149,13 +167,21 @@ const ItemTags: React.FC = () => {
     </SimpleGrid>
   );
 
-  if (loading) return <Spinner size="xl" />;
+  if (loading) return (
+    <Flex justify="center" align="center" height="50vh">
+      <Spinner size="xl" />
+    </Flex>
+  );
 
   if (closetItems.length === 0) {
     return (
       <Box textAlign="center" py={10}>
+        <Image src="/images/empty-closet.svg" alt="Empty Closet" mx="auto" mb={4} boxSize="150px" />
         <Text fontSize="xl" fontWeight="medium">Your closet is empty</Text>
         <Text mt={2} color="gray.600">Start by adding some items to your closet</Text>
+        <Button mt={4} colorScheme="blue" onClick={() => navigate('/closet/add')}>
+          Upload Items
+        </Button>
       </Box>
     );
   }
@@ -173,9 +199,9 @@ const ItemTags: React.FC = () => {
               key={category.name} 
               mx={1} 
               _selected={{ color: "white", bg: "blue.500" }} 
-              fontSize="xs"
+              fontSize="sm"
               py={1}
-              px={2}
+              px={3}
             >
               {category.name} ({category.count})
             </Tab>
