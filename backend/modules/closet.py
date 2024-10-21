@@ -9,6 +9,7 @@ from config import env
 import logging
 from PIL import Image
 import imagehash
+import ast
 
 from modules.segment import ClothSegmenter
 
@@ -45,6 +46,18 @@ class Closet:
             df = pd.read_csv(self.csv_path)
             if 'image_hash' not in df.columns:
                 df['image_hash'] = ''  # Add the column if it doesn't exist
+            
+            # Handle masked_images as a string representation of a Python list
+            def parse_masked_images(x):
+                if isinstance(x, str):
+                    try:
+                        return ast.literal_eval(x)
+                    except (ValueError, SyntaxError):
+                        # If parsing fails, return an empty list
+                        return []
+                return x if isinstance(x, list) else []
+
+            df['masked_images'] = df['masked_images'].apply(parse_masked_images)
             return df
         else:
             df = pd.DataFrame(columns=['id', 'image_path', 'clothes_mask', 'masked_images', 'category', 'subcategory', 'color', 'attributes', 'image_hash'])
@@ -115,7 +128,7 @@ class Closet:
             # Get the image paths
             image_path = item['image_path'].values[0]
             clothes_mask = item['clothes_mask'].values[0]
-            masked_images = item['masked_images'].values[0].split(',')
+            masked_images = json.loads(item['masked_images'].values[0])
             
             # Remove the item from the DataFrame
             df = df[df['id'] != item_id]
@@ -160,10 +173,6 @@ class Closet:
     def get_all_items(self) -> List[Clothes]:
         items = []
         for _, row in self.df.iterrows():
-            logger.info("Row data:")
-            for column, value in row.items():
-                logger.info(f"{column}: {type(value).__name__} = {value}")
-            
             try:
                 item = Clothes.from_dict(row.to_dict())
                 items.append(item)
@@ -174,7 +183,11 @@ class Closet:
         return items
 
     def _save_df(self) -> None:
+        # Convert masked_images to string representation of Python list before saving
+        self.df['masked_images'] = self.df['masked_images'].apply(lambda x: str(x) if isinstance(x, list) else '[]')
         self.df.to_csv(self.csv_path, index=False)
+        # Convert back to list after saving
+        self.df['masked_images'] = self.df['masked_images'].apply(ast.literal_eval)
 
     def get_closet_stats(self, include_distribution: bool = False) -> Dict[str, Any]:
         stats = {

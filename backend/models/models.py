@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import Dict, Any, List, Optional
 import json
+import ast
 
 class User(BaseModel):
     email: str
@@ -27,10 +28,17 @@ class Clothes(BaseModel):
         masked_images = data.get('masked_images', [])
         if isinstance(masked_images, str):
             try:
+                # First, try to parse as JSON
                 masked_images = json.loads(masked_images)
             except json.JSONDecodeError:
-                masked_images = []
-
+                try:
+                    # If that fails, try to parse as a Python literal
+                    masked_images = ast.literal_eval(masked_images)
+                except (ValueError, SyntaxError):
+                    # If all else fails, split by comma
+                    masked_images = [path.strip() for path in masked_images.split(',') if
+                                      path.strip()]
+        
         # Convert attributes from string to dict if necessary
         attributes = data.get('attributes', {})
         if isinstance(attributes, str):
@@ -56,7 +64,7 @@ class Clothes(BaseModel):
             "id": self.id,
             "image_path": self.image_path,
             "clothes_mask": self.clothes_mask,
-            "masked_images": self.masked_images,
+            "masked_images": self.masked_images,  # Return as a list, not a JSON string
             "category": self.category,
             "subcategory": self.subcategory,
             "color": self.color,

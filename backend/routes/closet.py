@@ -21,7 +21,7 @@ async def get_closet(current_user: User = Depends(get_current_user)):
         
         return {
             "message": "Closet retrieved successfully",
-            "items": [item.to_dict() for item in items]
+            "items": [item.to_dict() for item in items]  # This will now return masked_images as a list
         }
     except Exception as e:
         logger.error(f"Error retrieving closet for user {current_user.id}: {str(e)}")
